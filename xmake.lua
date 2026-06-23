@@ -43,6 +43,7 @@ end
 target("voris_vmem")
     if has_config("build_shared") then
         set_kind("shared")
+        add_defines("VORIS_VMEM_SHARED", {public = true})
     else
         set_kind("static")
     end
@@ -59,5 +60,26 @@ if has_config("build_tests") then
         add_files("tests/smoke.cpp")
         add_deps("voris_vmem")
         add_tests("smoke")
+    target_end()
+
+    target("vmem_contracts_test")
+        set_kind("binary")
+        add_files("tests/contracts.cpp")
+        add_deps("voris_vmem")
+        add_tests("contracts")
+    target_end()
+
+    target("vmem_abi_contracts_test")
+        set_kind("binary")
+        add_files("tests/abi_contracts.cpp")
+        add_deps("voris_vmem")
+        add_tests("abi_contracts")
+    target_end()
+
+    target("vmem_public_headers_test")
+        set_kind("binary")
+        add_files("tests/public_headers/*.cpp")
+        add_deps("voris_vmem")
+        add_tests("public_headers")
     target_end()
 end

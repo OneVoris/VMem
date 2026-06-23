@@ -4,13 +4,13 @@ Task identifiers follow `VMEM-M<milestone>-<sequence>`. A task may be checked on
 
 ## M0 — Contracts and Repository Skeleton
 
-- [ ] **VMEM-M0-001** Create the `voris_vmem` XMake target, public include layout, and export macros.
-- [ ] **VMEM-M0-002** Define `errc`, the allocation descriptor, resource ownership, and thread-safety classifications.
-- [ ] **VMEM-M0-003** Implement overflow-safe `align_up`, checked addition and multiplication, and power-of-two validation.
-- [ ] **VMEM-M0-004** Define allocation-free, copyable, non-owning `resource_ref` type erasure.
-- [ ] **VMEM-M0-005** Define `memory_tag`, source-location capture, and the minimum usage-counter interface.
-- [ ] **VMEM-M0-006** Add standalone public-header compilation tests and ABI size/static-assert tests.
-- [ ] **VMEM-M0-007** Write an ADR for zero-sized allocations, out-of-memory behavior, wrong-shard release, and resource destruction with live blocks.
+- [x] **VMEM-M0-001** Create the `voris_vmem` XMake target, public include layout, and export macros.
+- [x] **VMEM-M0-002** Define `errc`, the allocation descriptor, resource ownership, and thread-safety classifications.
+- [x] **VMEM-M0-003** Implement overflow-safe `align_up`, checked addition and multiplication, and power-of-two validation.
+- [x] **VMEM-M0-004** Define allocation-free, copyable, non-owning `resource_ref` type erasure.
+- [x] **VMEM-M0-005** Define `memory_tag`, source-location capture, and the minimum usage-counter interface.
+- [x] **VMEM-M0-006** Add standalone public-header compilation tests and ABI size/static-assert tests.
+- [x] **VMEM-M0-007** Write an ADR for zero-sized allocations, out-of-memory behavior, wrong-shard release, and resource destruction with live blocks.
 
 ## M1 — OS Pages and Base Resources
 
