@@ -2,12 +2,18 @@
 #include <voris/mem/resource_ref.hpp>
 #include <voris/mem/tag.hpp>
 
+#undef NDEBUG
+
 #include <cassert>
 #include <cstddef>
 #include <expected>
 #include <limits>
 #include <string_view>
 #include <type_traits>
+
+#if defined(NDEBUG)
+#    error "VMem assert-style tests require assertions enabled"
+#endif
 
 namespace {
 
@@ -96,6 +102,8 @@ int main() {
     assert(checked_add(std::numeric_limits<std::size_t>::max(), 1).error() == errc::size_overflow);
     assert(checked_mul(6, 7).value() == 42);
     assert(checked_mul(std::numeric_limits<std::size_t>::max(), 2).error() == errc::size_overflow);
+    assert(voris::mem::checked_sub(30, 20).value() == 10);
+    assert(voris::mem::checked_sub(10, 20).error() == errc::wrong_owner);
 
     constexpr voris::mem::memory_tag tag{"contracts"};
     auto request = voris::mem::make_allocation_request(32, alignof(std::max_align_t), tag);

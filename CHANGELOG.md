@@ -7,3 +7,5 @@ All notable changes will be documented here.
 - Repository architecture and implementation-planning scaffold.
 - Added M0 public memory contracts, checked arithmetic helpers, allocation descriptors, resource classification traits, memory tags, usage snapshots, and allocation-free `resource_ref` type erasure.
 - Added public header compilation tests, ABI/static contract tests, and M0 resource contract tests.
+- Added M1 Linux OS page source, portable `system_resource`, page-backed chunk manager, counting and fault-injection resources, and Windows/macOS placeholder contracts.
+- Added M1 resource contract tests, new public-header compilation tests, and a GitHub Actions build/test matrix for Ubuntu, Windows, and macOS.

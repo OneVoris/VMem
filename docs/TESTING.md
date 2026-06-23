@@ -17,6 +17,7 @@
 - Buffer-chain property tests and parser helpers across segment boundaries.
 - ASan/UBSan/TSan visibility through every custom resource.
 - Fault injection for metadata and payload allocation failures.
+- M1 page-source contract tests cover Linux page operations when available and fake-source reserve/commit failure cleanup on every platform.
 
 ## Required Configurations
 

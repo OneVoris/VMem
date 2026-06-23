@@ -14,13 +14,13 @@ Task identifiers follow `VMEM-M<milestone>-<sequence>`. A task may be checked on
 
 ## M1 — OS Pages and Base Resources
 
-- [ ] **VMEM-M1-001** Implement the Linux page source: reserve, commit, decommit, release, and page-size discovery.
-- [ ] **VMEM-M1-002** Implement a portable `system_resource` with aligned allocation.
-- [ ] **VMEM-M1-003** Implement page-backed chunk management and a direct path for large allocations.
-- [ ] **VMEM-M1-004** Implement `fault_injection_resource` with failure triggers by call count, byte count, and tag.
-- [ ] **VMEM-M1-005** Implement `counting_resource` and immutable usage snapshots.
-- [ ] **VMEM-M1-006** Add contract placeholders and CI gates for Windows `VirtualAlloc` and macOS `mmap` page sources.
-- [ ] **VMEM-M1-007** Test reserve/commit failures, alignment, zero-sized requests, and sizes near `SIZE_MAX`.
+- [x] **VMEM-M1-001** Implement the Linux page source: reserve, commit, decommit, release, and page-size discovery.
+- [x] **VMEM-M1-002** Implement a portable `system_resource` with aligned allocation.
+- [x] **VMEM-M1-003** Implement page-backed chunk management and a direct path for large allocations.
+- [x] **VMEM-M1-004** Implement `fault_injection_resource` with failure triggers by call count, byte count, and tag.
+- [x] **VMEM-M1-005** Implement `counting_resource` and immutable usage snapshots.
+- [x] **VMEM-M1-006** Add contract placeholders and CI gates for Windows `VirtualAlloc` and macOS `mmap` page sources.
+- [x] **VMEM-M1-007** Test reserve/commit failures, alignment, zero-sized requests, and sizes near `SIZE_MAX`.
 
 ## M2 — Arena, Pool, and Slab Resources
 

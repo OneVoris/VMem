@@ -29,6 +29,7 @@ The initial stable error identifiers are:
 | `size_overflow` | Size, alignment, header, or capacity arithmetic overflowed. |
 | `budget_exceeded` | A configured hard budget would be exceeded. |
 | `wrong_owner` | A block was released through the wrong resource, shard, or owner generation. |
+| `unsupported_platform` | The operation is intentionally unavailable for the current platform implementation. |
 
 ## Ownership
 
@@ -80,10 +81,33 @@ All size, alignment, header, and capacity arithmetic in public helpers uses chec
 ```cpp
 std::expected<std::size_t, errc> checked_add(std::size_t, std::size_t) noexcept;
 std::expected<std::size_t, errc> checked_mul(std::size_t, std::size_t) noexcept;
+std::expected<std::size_t, errc> checked_sub(std::size_t, std::size_t) noexcept;
 std::expected<std::size_t, errc> align_up(std::size_t value, std::size_t alignment) noexcept;
 ```
 
 `memory_tag` and `source_location` are copied into `allocation_request` so accounting and fault-injection resources can classify allocations without taking ownership of logging or telemetry infrastructure.
+
+## M1 Page and Resource Contracts
+
+M1 adds the following public headers:
+
+```cpp
+#include <voris/mem/page_source.hpp>
+#include <voris/mem/page_chunk.hpp>
+#include <voris/mem/system_resource.hpp>
+#include <voris/mem/counting_resource.hpp>
+#include <voris/mem/fault_injection_resource.hpp>
+```
+
+`os_page_source` discovers the operating-system page size and exposes `reserve`, `commit`, `decommit`, and `release` over `page_span`. Linux uses `mmap`, `mprotect`, `madvise`, and `munmap` internally. Windows and macOS currently compile and keep the same public contract, but page operations return `errc::unsupported_platform`; their complete `VirtualAlloc` and `mmap` implementations remain M6 work.
+
+`basic_page_chunk_manager<PageSource>` reserves page-aligned spans from a page source. Requests that fit the configured chunk size use `page_allocation_kind::chunk`; requests larger than the chunk or at least the direct threshold use `page_allocation_kind::direct`. Commit failure releases the reserved span before returning the provider error.
+
+`system_resource` is a thread-safe, caller-owned resource backed by the platform C allocation APIs. It validates power-of-two alignment, accepts zero-sized requests as empty successful allocations, reports impossible checked arithmetic as `errc::size_overflow`, and exposes usage snapshots by value. `deallocate` is `noexcept` and validates non-empty blocks against the resource's active allocation registry before calling the platform free routine. Null-with-nonzero, non-null-with-zero, foreign pointer, double free, size mismatch, and alignment mismatch releases return `errc::wrong_owner`.
+
+`counting_resource` and `fault_injection_resource` are caller-owned wrappers around `resource_ref`. Their counters use atomics and `usage()` returns an immutable snapshot. Wrapper thread-safety follows the wrapped resource because allocation and deallocation are forwarded through the underlying `resource_ref`. Fault injection can fail deterministically by allocation call number, cumulative requested bytes, or `memory_tag`.
+
+Usage byte accounting uses checked arithmetic. Allocation-side accounting overflow returns `errc::size_overflow` and leaves externally visible usage unchanged except for the failure counter. Deallocation that would underflow wrapper or resource accounting returns `errc::wrong_owner`; wrappers validate block shape and local accounting before forwarding release to the wrapped resource.
 
 ## Configuration
 

@@ -19,6 +19,8 @@ xmake
 xmake test
 ```
 
+M1 is expected to build on Ubuntu, Windows, and macOS. Linux exercises the real OS page source. Windows and macOS exercise the same public headers, portable resources, and fake-page-source chunk contracts while `os_page_source` page operations return `errc::unsupported_platform` until the M6 platform implementations are completed.
+
 ## Resolve Voris Dependencies
 
 ```bash

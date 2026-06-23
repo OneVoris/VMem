@@ -59,6 +59,7 @@ if has_config("build_tests") then
         set_kind("binary")
         add_files("tests/smoke.cpp")
         add_deps("voris_vmem")
+        add_undefines("NDEBUG")
         add_tests("smoke")
     target_end()
 
@@ -66,6 +67,7 @@ if has_config("build_tests") then
         set_kind("binary")
         add_files("tests/contracts.cpp")
         add_deps("voris_vmem")
+        add_undefines("NDEBUG")
         add_tests("contracts")
     target_end()
 
@@ -73,13 +75,23 @@ if has_config("build_tests") then
         set_kind("binary")
         add_files("tests/abi_contracts.cpp")
         add_deps("voris_vmem")
+        add_undefines("NDEBUG")
         add_tests("abi_contracts")
+    target_end()
+
+    target("vmem_m1_resources_test")
+        set_kind("binary")
+        add_files("tests/m1_resources.cpp")
+        add_deps("voris_vmem")
+        add_undefines("NDEBUG")
+        add_tests("m1_resources")
     target_end()
 
     target("vmem_public_headers_test")
         set_kind("binary")
         add_files("tests/public_headers/*.cpp")
         add_deps("voris_vmem")
+        add_undefines("NDEBUG")
         add_tests("public_headers")
     target_end()
 end
