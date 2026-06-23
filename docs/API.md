@@ -109,6 +109,32 @@ M1 adds the following public headers:
 
 Usage byte accounting uses checked arithmetic. Allocation-side accounting overflow returns `errc::size_overflow` and leaves externally visible usage unchanged except for the failure counter. Deallocation that would underflow wrapper or resource accounting returns `errc::wrong_owner`; wrappers validate block shape and local accounting before forwarding release to the wrapped resource.
 
+## M2 Arena, Pool, Slab, Synchronization, and PMR Contracts
+
+M2 adds the following public headers:
+
+```cpp
+#include <voris/mem/arena_resource.hpp>
+#include <voris/mem/fixed_block_pool.hpp>
+#include <voris/mem/slab_resource.hpp>
+#include <voris/mem/synchronized_resource.hpp>
+#include <voris/mem/pmr_adapter.hpp>
+```
+
+`arena_resource` is caller-owned and shard-confined. It allocates monotonic chunks from an upstream `resource_ref`, validates alignment and checked growth arithmetic, returns empty blocks for zero-sized requests, and supports `reset()` with a retained-bytes limit. Individual non-empty deallocation validates ownership and is otherwise a no-op; memory is reclaimed on `reset()` or resource destruction.
+
+`fixed_block_pool` is caller-owned and shard-confined. It uses checked stride and backing-size arithmetic for configurable block size, alignment, and capacity. Deallocation validates shape, pointer range, stride alignment, owner state, size, and alignment before returning a block to the freelist. `allocate_block()` returns `fixed_block_allocation`, which carries the plain `allocation` plus a resource-specific generation. `deallocate_block()` validates that generation and returns `errc::wrong_owner` for stale descriptors without corrupting the freelist. The plain `allocate()` and `deallocate()` methods remain available for `resource_ref` compatibility but cannot validate a generation that is not present in `allocation`.
+
+`slab_resource` is caller-owned and shard-confined with bounded remote release support. The M2 size classes cover 8, 16, 32, 64, 128, 256, 512, and 1024 byte blocks. `allocate_block()` returns `slab_allocation`, which carries the plain `allocation` plus a resource-specific generation. `deallocate_block()` validates that generation and returns `errc::wrong_owner` for stale descriptors without corrupting slab metadata. The plain `allocate()` and `deallocate()` methods remain available for `resource_ref` compatibility but cannot validate a generation that is not present in `allocation`.
+
+Remote frees are queued in a bounded mutex-protected queue and released by `drain_remote_frees()`. `remote_deallocate_block()` accepts a `slab_allocation` descriptor and validates generation before queueing. Stale remote descriptors return `errc::wrong_owner` and do not disturb the current owner. Plain `remote_deallocate(allocation)` remains available for `resource_ref` compatibility, but it has no caller-provided generation token.
+
+If the queue is full or a queue insertion cannot be completed, a synchronous locked slow path releases the block immediately and increments slow-path counters in `slab_remote_snapshot`; full queues also increment saturation counters. Slab metadata, bucket free lists, slab vectors, and usage counters are protected by a single state mutex. Upstream slab allocation and deallocation are not performed while holding that state mutex; only metadata publication is locked. The remote queue mutex protects only the queue and remote counters. Code does not hold the remote queue mutex while acquiring the state mutex; the full-queue and queue-insertion-failure slow paths release the queue mutex before taking the slow-path/state locks. `slab_options::force_remote_queue_push_failure` is a deterministic test hook for this fallback path and should remain false in production configuration.
+
+`synchronized_resource` wraps any `resource_ref` with a mutex and reports thread-safe traits. It is intended for explicit adaptation at boundaries and is not the default hot-path resource. It is non-reentrant: callers must not use an upstream resource that calls back into the same synchronized wrapper or resource graph while the wrapper lock is held.
+
+`pmr_memory_resource` adapts a VMem `resource_ref` to `std::pmr::memory_resource`. `pmr_resource_adapter` adapts a `std::pmr::memory_resource*` to the VMem resource-like API with active allocation validation. Its upstream calls, active registry, and counters are protected by one mutex, so it reports thread-safe traits even when the wrapped PMR resource does not provide its own synchronization. It is also non-reentrant for the same reason: the wrapped PMR resource must not call back into the same adapter while an adapter operation is active. If an upstream PMR `deallocate` throws during adapter release, the adapter catches the exception, returns `errc::wrong_owner`, and leaves the local active registry and accounting unchanged so the caller can retry or destroy the adapter under the normal live-block contract.
+
 ## Configuration
 
 Configuration is represented by validated value objects with safe hard limits. Avoid positional Boolean parameters; use named options and enums.

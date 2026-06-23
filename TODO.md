@@ -24,16 +24,16 @@ Task identifiers follow `VMEM-M<milestone>-<sequence>`. A task may be checked on
 
 ## M2 — Arena, Pool, and Slab Resources
 
-- [ ] **VMEM-M2-001** Implement a monotonic arena with growth policy, reset, and retained-page limits.
-- [ ] **VMEM-M2-002** Implement a fixed-block pool with configurable alignment.
-- [ ] **VMEM-M2-003** Design the size-class table and slab page layout and record them in an ADR.
-- [ ] **VMEM-M2-004** Implement the shard-local slab freelist fast path.
-- [ ] **VMEM-M2-005** Implement block owner and generation validation.
-- [ ] **VMEM-M2-006** Implement a bounded MPSC remote-free queue and drain operation.
-- [ ] **VMEM-M2-007** Define an observable, leak-free slow path for a full remote-free queue.
-- [ ] **VMEM-M2-008** Implement a thread-safe wrapper and document that it is not the default hot-path resource.
-- [ ] **VMEM-M2-009** Implement adapters to and from `std::pmr::memory_resource`.
-- [ ] **VMEM-M2-010** Add fragmentation, cross-shard free, and contention benchmarks.
+- [x] **VMEM-M2-001** Implement a monotonic arena with growth policy, reset, and retained-page limits.
+- [x] **VMEM-M2-002** Implement a fixed-block pool with configurable alignment.
+- [x] **VMEM-M2-003** Design the size-class table and slab page layout and record them in an ADR.
+- [x] **VMEM-M2-004** Implement the shard-local slab freelist fast path.
+- [x] **VMEM-M2-005** Implement block owner and generation validation.
+- [x] **VMEM-M2-006** Implement a bounded MPSC remote-free queue and drain operation.
+- [x] **VMEM-M2-007** Define an observable, leak-free slow path for a full remote-free queue.
+- [x] **VMEM-M2-008** Implement a thread-safe wrapper and document that it is not the default hot-path resource.
+- [x] **VMEM-M2-009** Implement adapters to and from `std::pmr::memory_resource`.
+- [x] **VMEM-M2-010** Add fragmentation, cross-shard free, and contention benchmarks.
 
 ## M3 — Buffer Infrastructure
 

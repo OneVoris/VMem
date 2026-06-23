@@ -18,6 +18,7 @@
 - ASan/UBSan/TSan visibility through every custom resource.
 - Fault injection for metadata and payload allocation failures.
 - M1 page-source contract tests cover Linux page operations when available and fake-source reserve/commit failure cleanup on every platform.
+- M2 resource contract tests cover arena growth/reset/retention, fixed-pool alignment/full/double-free/wrong-owner paths, fixed-pool and slab stale generation descriptors, slab generation-aware remote release, slab size-class selection, remote-free drain, deterministic full-queue and forced queue-push-failure slow paths, slab grow rollback on reserved-byte overflow, synchronized wrapper behavior, PMR adapter thread-safe traits, serialized threaded PMR adapter allocation against a detecting upstream, throwing PMR deallocate behavior, and overflow checks near `SIZE_MAX`.
 
 ## Required Configurations
 
@@ -31,6 +32,8 @@
 ## Benchmark Record
 
 Every reported result includes commit, compiler, standard library, flags, CPU, operating system/kernel, workload, throughput, latency percentiles, peak RSS, allocations per operation, and errors/timeouts. A single RPS number is not a release argument.
+
+The M2 smoke benchmark target is `vmem_m2_resources_benchmark`. It prints deterministic comma-separated lines for arena fragmentation-like churn, producer-thread slab remote-free saturation/drain behavior, and synchronized-resource contention. The remote-free line reports remote attempts, drain releases, producer thread count, queue capacity, queued count, drained total, saturation count, and slow-path count separately.
 
 ## Completion Rule
 

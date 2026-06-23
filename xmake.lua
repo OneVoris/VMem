@@ -87,11 +87,27 @@ if has_config("build_tests") then
         add_tests("m1_resources")
     target_end()
 
+    target("vmem_m2_resources_test")
+        set_kind("binary")
+        add_files("tests/m2_resources.cpp")
+        add_deps("voris_vmem")
+        add_undefines("NDEBUG")
+        add_tests("m2_resources")
+    target_end()
+
     target("vmem_public_headers_test")
         set_kind("binary")
         add_files("tests/public_headers/*.cpp")
         add_deps("voris_vmem")
         add_undefines("NDEBUG")
         add_tests("public_headers")
+    target_end()
+end
+
+if has_config("build_benchmarks") then
+    target("vmem_m2_resources_benchmark")
+        set_kind("binary")
+        add_files("benchmarks/m2_resources_benchmark.cpp")
+        add_deps("voris_vmem")
     target_end()
 end

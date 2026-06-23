@@ -19,6 +19,16 @@ xmake
 xmake test
 ```
 
+Benchmarks are optional and are enabled separately:
+
+```bash
+xmake f -m debug --build_tests=y --build_benchmarks=y
+xmake
+xmake run vmem_m2_resources_benchmark
+```
+
+The M2 benchmark uses producer threads for the remote-free workload and keeps the workload smoke-scale for reproducible local validation. Its output is descriptive metadata and counters, not a release threshold.
+
 M1 is expected to build on Ubuntu, Windows, and macOS. Linux exercises the real OS page source. Windows and macOS exercise the same public headers, portable resources, and fake-page-source chunk contracts while `os_page_source` page operations return `errc::unsupported_platform` until the M6 platform implementations are completed.
 
 ## Resolve Voris Dependencies
