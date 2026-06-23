@@ -77,6 +77,26 @@ M3 adds the following public headers:
 
 Parser helpers read across segment boundaries: `peek_uint_be`, `peek_uint_le`, `find_delimiter`, and `copy_prefix`. Prefix copy rejects an invalid non-empty null destination with `errc::wrong_owner`. Public headers do not expose POSIX `iovec`, Windows `WSABUF`, or platform networking/page headers; scatter/gather adapters remain private implementation/test support.
 
+## M4 Budget Contracts
+
+M4 adds the following public header:
+
+```cpp
+#include <voris/mem/budget.hpp>
+```
+
+`budget_node` and its alias `memory_budget` provide a standalone, caller-owned budget layer. A node is thread-safe; parent nodes must outlive child nodes and every live `reservation_token` created through a child. Reservation creation supports up to `max_budget_hierarchy_depth` nodes from root to leaf; deeper hierarchies return `errc::size_overflow` before creating a token or changing accounting. Current allocators are not forced to consume the budget layer yet.
+
+Reservations are hierarchical. Reserving bytes on a child reserves the same bytes on every ancestor. A move-only `reservation_token` owns those reserved bytes until `commit()`, `rollback()`, move assignment cleanup, or destruction. `commit()` converts reserved bytes to active bytes exactly once and returns `errc::out_of_memory` if traversal state allocation fails before mutation. Repeated `commit()` or `rollback()` calls are no-op successes after the token has left the reserved state. Destruction rolls back only uncommitted reservations. Move construction transfers ownership. Move assignment first rolls back the destination's current uncommitted reservation, then transfers the source token.
+
+Committed bytes do not grow forever: callers explicitly release active accounting with `budget_node::release(bytes, tag)`. Release validates aggregate and per-tag active bytes before changing state; underflow returns `errc::wrong_owner` and leaves accounting unchanged. Public `reserve()` and `release()` convert internal allocation failures that occur before mutation to `errc::out_of_memory`.
+
+All accounting arithmetic uses checked helpers. Hard-limit failures return `errc::budget_exceeded` and leave all nodes unchanged. Soft limits emit `soft_limit_exceeded` events but do not reject reservations. High watermark events fire when total reserved plus active bytes crosses from at-or-below to above the configured high watermark. Low watermark events fire when total reserved plus active bytes crosses from above to at-or-below the configured low watermark. Low watermarks default to disabled with the `std::numeric_limits<std::size_t>::max()` sentinel.
+
+Snapshots are immutable value objects returned by `snapshots()` or passed to `export_snapshots(sink)`. They expose process, shard, subsystem, tag, reserved bytes, active bytes, configured limits, and event counters. `snapshots()` and `export_snapshots()` allocate value-owned strings and vectors and may throw `std::bad_alloc`.
+
+Event callbacks use `budget_event_sink`; snapshot export accepts a caller-provided sink. Both are optional and have no logging dependency. `budget_event_sink` requires a sink that is nothrow-invocable with `const budget_event&`. User callbacks are invoked after internal locks have been released, so a callback may call back into the same budget. Rollback/destructor cleanup does not depend on event-record allocation: if a low-watermark event record cannot be allocated while rolling back reserved bytes, accounting is still released and the event is dropped; counters still reflect the crossing.
+
 ## M0 Resource Contracts
 
 The M0 public surface is limited to contracts and value types:

@@ -105,6 +105,14 @@ if has_config("build_tests") then
         add_tests("m3_buffers")
     target_end()
 
+    target("vmem_m4_budgets_test")
+        set_kind("binary")
+        add_files("tests/m4_budgets.cpp")
+        add_deps("voris_vmem")
+        add_undefines("NDEBUG")
+        add_tests("m4_budgets")
+    target_end()
+
     target("vmem_public_headers_test")
         set_kind("binary")
         add_files("tests/public_headers/*.cpp")
@@ -125,6 +133,12 @@ if has_config("build_benchmarks") then
         set_kind("binary")
         add_files("benchmarks/m3_buffers_benchmark.cpp")
         add_includedirs("src")
+        add_deps("voris_vmem")
+    target_end()
+
+    target("vmem_m4_budgets_benchmark")
+        set_kind("binary")
+        add_files("benchmarks/m4_budgets_benchmark.cpp")
         add_deps("voris_vmem")
     target_end()
 end

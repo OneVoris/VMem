@@ -20,6 +20,7 @@
 - M1 page-source contract tests cover Linux page operations when available and fake-source reserve/commit failure cleanup on every platform.
 - M2 resource contract tests cover arena growth/reset/retention, fixed-pool alignment/full/double-free/wrong-owner paths, fixed-pool and slab stale generation descriptors, slab generation-aware remote release, slab size-class selection, remote-free drain, deterministic full-queue and forced queue-push-failure slow paths, slab grow rollback on reserved-byte overflow, synchronized wrapper behavior, PMR adapter thread-safe traits, serialized threaded PMR adapter allocation against a detecting upstream, throwing PMR deallocate behavior, and overflow checks near `SIZE_MAX`.
 - M3 buffer contract tests cover borrowed view slicing, unique-buffer move/reset/resize ownership, shared-buffer final release on the releasing thread, owner generation checks, deterministic reference-count overflow, remote final release dispatch, small-inline chain append/prepend/consume/trim/slice/coalesce, bounded coalesce failure, parser helpers across segment boundaries, private gather conversion, and deterministic randomized chain properties.
+- M4 budget contract tests cover child reservations exhausting parent hard limits, hard-limit failure atomicity across dimensions, depth-limit rejection before token creation, soft-limit events without rejection, high/low watermark crossings, disabled default low watermarks, callbacks that re-enter the same budget after locks are released, move construction and move assignment of reservation tokens, commit/rollback idempotence, release underflow, concurrent reservations, and snapshot export dimensions.
 
 ## Required Configurations
 
@@ -37,6 +38,8 @@ Every reported result includes commit, compiler, standard library, flags, CPU, o
 The M2 smoke benchmark target is `vmem_m2_resources_benchmark`. It prints deterministic comma-separated lines for arena fragmentation-like churn, producer-thread slab remote-free saturation/drain behavior, and synchronized-resource contention. The remote-free line reports remote attempts, drain releases, producer thread count, queue capacity, queued count, drained total, saturation count, and slow-path count separately.
 
 The M3 smoke benchmark target is `vmem_m3_buffers_benchmark`. It reports append, consume, and neutral gather conversion workloads for 1, 2, 4, and 16 segments. The M3 fuzz smoke target is `vmem_m3_buffer_chain_fuzz`.
+
+The M4 smoke benchmark target is `vmem_m4_budgets_benchmark`. It prints deterministic comma-separated lines for reserve/commit/release and concurrent reserve/rollback workloads, and terminates if either workload leaves non-empty snapshots behind. The output is a local validation aid, not a release threshold.
 
 ## Completion Rule
 

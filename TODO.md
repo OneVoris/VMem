@@ -50,12 +50,12 @@ Task identifiers follow `VMEM-M<milestone>-<sequence>`. A task may be checked on
 
 ## M4 — Budgets and Pressure Feedback
 
-- [ ] **VMEM-M4-001** Implement hierarchical budget reservation tokens.
-- [ ] **VMEM-M4-002** Support process, shard, subsystem, and tag dimensions in accounting snapshots.
-- [ ] **VMEM-M4-003** Define soft limits, hard limits, and high/low watermark events.
-- [ ] **VMEM-M4-004** Ensure reservation-token move, rollback, and commit cannot double-account.
-- [ ] **VMEM-M4-005** Test concurrent reservations and parent/child budget exhaustion.
-- [ ] **VMEM-M4-006** Provide snapshot and export callbacks without a logging dependency.
+- [x] **VMEM-M4-001** Implement hierarchical budget reservation tokens.
+- [x] **VMEM-M4-002** Support process, shard, subsystem, and tag dimensions in accounting snapshots.
+- [x] **VMEM-M4-003** Define soft limits, hard limits, and high/low watermark events.
+- [x] **VMEM-M4-004** Ensure reservation-token move, rollback, and commit cannot double-account.
+- [x] **VMEM-M4-005** Test concurrent reservations and parent/child budget exhaustion.
+- [x] **VMEM-M4-006** Provide snapshot and export callbacks without a logging dependency.
 
 ## M5 — Debugging, Hardening, and Observability
 
