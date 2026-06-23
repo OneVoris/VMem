@@ -22,12 +22,16 @@ xmake test
 Benchmarks are optional and are enabled separately:
 
 ```bash
-xmake f -m debug --build_tests=y --build_benchmarks=y
+xmake f -m debug --build_tests=y --build_benchmarks=y --build_fuzzers=y
 xmake
 xmake run vmem_m2_resources_benchmark
+xmake run vmem_m3_buffers_benchmark
+xmake run vmem_m3_buffer_chain_fuzz
 ```
 
 The M2 benchmark uses producer threads for the remote-free workload and keeps the workload smoke-scale for reproducible local validation. Its output is descriptive metadata and counters, not a release threshold.
+
+The M3 buffer benchmark prints deterministic comma-separated lines for append, consume, and neutral gather conversion with 1, 2, 4, and 16 segments. The M3 fuzz target is a dependency-free deterministic smoke binary that exercises randomized append/prepend/consume/trim/coalesce/parser operations with fixed seeds.
 
 M1 is expected to build on Ubuntu, Windows, and macOS. Linux exercises the real OS page source. Windows and macOS exercise the same public headers, portable resources, and fake-page-source chunk contracts while `os_page_source` page operations return `errc::unsupported_platform` until the M6 platform implementations are completed.
 

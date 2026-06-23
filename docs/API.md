@@ -39,6 +39,7 @@ The initial stable error identifiers are:
 - `handle` is move-only and closes on destruction.
 - Every view documents invalidation conditions.
 - `resource_ref` is a copyable, allocation-free, non-owning reference to a resource object. The referenced resource must outlive every `resource_ref` and every live block allocated through it.
+- A default-constructed `resource_ref` is invalid but safe to query. Allocation, deallocation, and remote deallocation return `errc::wrong_owner`; traits and usage return empty value objects.
 - Every resource exposes `resource_traits` with `resource_ownership`, `resource_thread_safety`, and whether remote deallocation is supported.
 
 ## Asynchronous Behavior
@@ -53,6 +54,28 @@ Core APIs remain synchronous unless an optional VIO component is enabled.
 ## Buffers
 
 Borrowed byte ranges use VMem-compatible views. APIs document whether input is borrowed, consumed, retained, or copied. Scatter/gather operating-system types stay private.
+
+## M3 Buffer Contracts
+
+M3 adds the following public headers:
+
+```cpp
+#include <voris/mem/buffer.hpp>
+#include <voris/mem/unique_buffer.hpp>
+#include <voris/mem/shared_buffer.hpp>
+#include <voris/mem/buffer_chain.hpp>
+#include <voris/mem/buffer_parser.hpp>
+```
+
+`const_buffer` and `mutable_buffer` are non-owning byte views. A null pointer is valid only when the size is zero. Their `slice(offset, count)` helpers return `errc::wrong_owner` for invalid non-empty null views, validate checked offset/count arithmetic, and return `errc::size_overflow` for out-of-bounds ranges.
+
+`unique_buffer` is move-only ownership over an allocation from `resource_ref`. It tracks logical size separately from capacity, resizes only within capacity, and releases through the originating resource in `reset()` or destruction. Release is `noexcept` and reports provider ownership failures through `reset()`. Move assignment first releases the current owner; if release fails, both source and destination remain unchanged so callers can retry cleanup.
+
+`shared_buffer` is an intrusive reference-counted buffer with explicit `clone()` so reference-count overflow is reportable as `errc::size_overflow`. Final release happens on the thread that drops the last reference. Cross-thread final release is accepted only when the backing resource is thread-safe or advertises remote deallocation; remote-capable non-thread-safe resources are released through `resource_ref::remote_deallocate`. Otherwise creation returns `errc::wrong_owner`. The control block records owner generation and validates it before cloning or final release. Final-release failure leaves the handle attached with use count one so release can be retried. Move assignment leaves both buffers unchanged if releasing the current destination owner fails.
+
+`buffer_chain` stores up to four segments inline before spilling to dynamic segment storage. Segments may borrow a `const_buffer` or own a `unique_buffer`/`shared_buffer`. Append and prepend reject invalid non-empty null views with `errc::wrong_owner`. Append, prepend, consume, trim, and slice operations preserve segment order and validate checked size arithmetic. Moving a chain transfers its segments and leaves the source empty. `coalesce(resource, max_size, alignment, tag)` copies into a `unique_buffer` only when the chain size is at or below the explicit limit; exceeding the limit returns `errc::budget_exceeded`.
+
+Parser helpers read across segment boundaries: `peek_uint_be`, `peek_uint_le`, `find_delimiter`, and `copy_prefix`. Prefix copy rejects an invalid non-empty null destination with `errc::wrong_owner`. Public headers do not expose POSIX `iovec`, Windows `WSABUF`, or platform networking/page headers; scatter/gather adapters remain private implementation/test support.
 
 ## M0 Resource Contracts
 

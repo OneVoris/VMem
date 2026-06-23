@@ -106,6 +106,23 @@ int main() {
     assert(voris::mem::checked_sub(10, 20).error() == errc::wrong_owner);
 
     constexpr voris::mem::memory_tag tag{"contracts"};
+
+    voris::mem::resource_ref empty_ref;
+    auto empty_allocate = empty_ref.allocate(8, alignof(std::max_align_t), tag);
+    assert(!empty_allocate);
+    assert(empty_allocate.error() == errc::wrong_owner);
+    auto empty_deallocate =
+        empty_ref.deallocate(voris::mem::allocation{nullptr, 0, alignof(std::max_align_t)});
+    assert(!empty_deallocate);
+    assert(empty_deallocate.error() == errc::wrong_owner);
+    auto empty_remote =
+        empty_ref.remote_deallocate(voris::mem::allocation{nullptr, 0, alignof(std::max_align_t)});
+    assert(!empty_remote);
+    assert(empty_remote.error() == errc::wrong_owner);
+    assert(empty_ref.traits().name.empty());
+    assert(empty_ref.usage().active_bytes == 0);
+    assert(empty_ref.usage().active_allocations == 0);
+
     auto request = voris::mem::make_allocation_request(32, alignof(std::max_align_t), tag);
     assert(request.size == 32);
     assert(request.alignment == alignof(std::max_align_t));

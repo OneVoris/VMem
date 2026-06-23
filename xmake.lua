@@ -95,6 +95,16 @@ if has_config("build_tests") then
         add_tests("m2_resources")
     target_end()
 
+    target("vmem_m3_buffers_test")
+        set_kind("binary")
+        add_files("tests/m3_buffers.cpp")
+        add_includedirs("src")
+        add_deps("voris_vmem")
+        add_undefines("NDEBUG")
+        add_defines("VORIS_VMEM_ENABLE_TEST_HOOKS")
+        add_tests("m3_buffers")
+    target_end()
+
     target("vmem_public_headers_test")
         set_kind("binary")
         add_files("tests/public_headers/*.cpp")
@@ -108,6 +118,21 @@ if has_config("build_benchmarks") then
     target("vmem_m2_resources_benchmark")
         set_kind("binary")
         add_files("benchmarks/m2_resources_benchmark.cpp")
+        add_deps("voris_vmem")
+    target_end()
+
+    target("vmem_m3_buffers_benchmark")
+        set_kind("binary")
+        add_files("benchmarks/m3_buffers_benchmark.cpp")
+        add_includedirs("src")
+        add_deps("voris_vmem")
+    target_end()
+end
+
+if has_config("build_fuzzers") then
+    target("vmem_m3_buffer_chain_fuzz")
+        set_kind("binary")
+        add_files("fuzz/buffer_chain_fuzz.cpp")
         add_deps("voris_vmem")
     target_end()
 end

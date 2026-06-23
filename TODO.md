@@ -37,16 +37,16 @@ Task identifiers follow `VMEM-M<milestone>-<sequence>`. A task may be checked on
 
 ## M3 — Buffer Infrastructure
 
-- [ ] **VMEM-M3-001** Implement `const_buffer`, `mutable_buffer`, and bounds-checked slicing.
-- [ ] **VMEM-M3-002** Implement move-only `unique_buffer` with capacity, size, and resource ownership.
-- [ ] **VMEM-M3-003** Implement intrusive-reference-counted `shared_buffer` and define cross-shard final release.
-- [ ] **VMEM-M3-004** Implement a small-inline `buffer_chain`.
-- [ ] **VMEM-M3-005** Implement append, prepend, consume, trim, and slice operations.
-- [ ] **VMEM-M3-006** Implement bounded coalescing that returns an error instead of allocating beyond the limit.
-- [ ] **VMEM-M3-007** Implement private POSIX `iovec` and Windows `WSABUF` adapters.
-- [ ] **VMEM-M3-008** Add cross-segment parser helpers for integer peeking, delimiter search, and prefix copy.
-- [ ] **VMEM-M3-009** Add property tests and fuzzing for buffer-chain operations.
-- [ ] **VMEM-M3-010** Benchmark append, consume, and gather conversion with 1, 2, 4, and 16 segments.
+- [x] **VMEM-M3-001** Implement `const_buffer`, `mutable_buffer`, and bounds-checked slicing.
+- [x] **VMEM-M3-002** Implement move-only `unique_buffer` with capacity, size, and resource ownership.
+- [x] **VMEM-M3-003** Implement intrusive-reference-counted `shared_buffer` and define cross-shard final release.
+- [x] **VMEM-M3-004** Implement a small-inline `buffer_chain`.
+- [x] **VMEM-M3-005** Implement append, prepend, consume, trim, and slice operations.
+- [x] **VMEM-M3-006** Implement bounded coalescing that returns an error instead of allocating beyond the limit.
+- [x] **VMEM-M3-007** Implement private POSIX `iovec` and Windows `WSABUF` adapters.
+- [x] **VMEM-M3-008** Add cross-segment parser helpers for integer peeking, delimiter search, and prefix copy.
+- [x] **VMEM-M3-009** Add property tests and fuzzing for buffer-chain operations.
+- [x] **VMEM-M3-010** Benchmark append, consume, and gather conversion with 1, 2, 4, and 16 segments.
 
 ## M4 — Budgets and Pressure Feedback
 
