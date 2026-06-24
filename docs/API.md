@@ -109,7 +109,7 @@ M5 adds the following public header:
 
 The plain `allocate()` and `deallocate()` methods keep the normal `allocation` contract. Generation-aware callers can use `allocate_block()` and `deallocate_block(debug_allocation)` to validate a resource-specific generation token. This mirrors the M2 fixed-pool and slab descriptor style without changing `allocation`.
 
-Large allocations can request guard pages by setting `debug_resource_options::guard_pages_for_large_allocations` and `guard_page_threshold`. Where `os_page_source` supports reservation and commit, the wrapper reserves guard pages around the committed payload span. Unsupported platforms fall back to the wrapped upstream resource and expose fallback counts through `debug_snapshot()`. Windows and macOS page-source completion remains M6 scope.
+Large allocations can request guard pages by setting `debug_resource_options::guard_pages_for_large_allocations` and `guard_page_threshold`. Where `os_page_source` supports reservation and commit, the wrapper reserves guard pages around the committed payload span. Unsupported platforms fall back to the wrapped upstream resource and expose fallback counts through `debug_snapshot()`.
 
 Leak checks are explicit and do not use a global process-exit hook. `leak_snapshot()` returns active allocation records, including block, generation, tag, source location, and guard-page status. `diff_leak_snapshots(before, after)` returns added and removed records plus byte totals.
 
@@ -156,13 +156,18 @@ M1 adds the following public headers:
 
 ```cpp
 #include <voris/mem/page_source.hpp>
+#include <voris/mem/platform.hpp>
 #include <voris/mem/page_chunk.hpp>
 #include <voris/mem/system_resource.hpp>
 #include <voris/mem/counting_resource.hpp>
 #include <voris/mem/fault_injection_resource.hpp>
 ```
 
-`os_page_source` discovers the operating-system page size and exposes `reserve`, `commit`, `decommit`, and `release` over `page_span`. Linux uses `mmap`, `mprotect`, `madvise`, and `munmap` internally. Windows and macOS currently compile and keep the same public contract, but page operations return `errc::unsupported_platform`; their complete `VirtualAlloc` and `mmap` implementations remain M6 work.
+`os_page_source` discovers the operating-system page size and exposes `reserve`, `commit`, `decommit`, and `release` over `page_span`. Linux and macOS use private `mmap`, `mprotect`, advisory discard, and `munmap` calls. Windows uses private `VirtualAlloc` and `VirtualFree` calls. Unknown platforms compile the same public API and return `errc::unsupported_platform` for page operations.
+
+Huge pages are opt-in and disabled by default. `page_source_options{.prefer_huge_pages = true}` asks the page source to try huge pages first. With the default `allow_huge_page_fallback = true`, unsupported or unavailable huge pages fall back to ordinary pages. With fallback disabled, the call returns an explicit error instead. `huge_page_size()` reports the platform huge-page size where VMem can query one. On Linux it reads `/proc/meminfo` `Hugepagesize` and falls back to the common 2 MiB request size if the query is unavailable or malformed. Other platforms that cannot report a value return `errc::unsupported_platform`.
+
+`platform.hpp` exposes `build_cpu_architecture`, `cache_line_size`, and `cache_line_assumption_available`. VMem provides a 64-byte cache-line assumption for x86_64 and arm64 only, with compile-time preprocessor simulation for both branches. Unknown architectures report `cache_line_size == 0` and must not treat the value as a layout guarantee. Runtime validation still requires a target runner for the CPU/OS pair being released.
 
 `basic_page_chunk_manager<PageSource>` reserves page-aligned spans from a page source. Requests that fit the configured chunk size use `page_allocation_kind::chunk`; requests larger than the chunk or at least the direct threshold use `page_allocation_kind::direct`. Commit failure releases the reserved span before returning the provider error.
 
@@ -212,7 +217,7 @@ The `0.x` series does not promise binary compatibility. Shared-library builds hi
 namespace voris::mem {
 
 enum class errc { out_of_memory, invalid_alignment, size_overflow,
-                  budget_exceeded, wrong_owner };
+                  budget_exceeded, wrong_owner, unsupported_platform };
 
 struct allocation {
     void* data{};

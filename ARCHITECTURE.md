@@ -44,7 +44,15 @@ The repository consumes only released public upstream APIs through VXrepo. Priva
 OS pages → system resource → page pool → arena/slab/pool → buffers and subsystem objects
 ```
 
-## 5. Core Invariants
+## 5. Platform Assumptions
+
+Windows, Linux, and macOS page sources implement the same `page_span` contract. Unknown platforms compile the public API and report `errc::unsupported_platform` for page operations.
+
+VMem exposes a 64-byte cache-line assumption only for x86_64 and arm64 builds, with static checks for both preprocessor branches. Unknown architectures expose no cache-line size promise through `platform.hpp`. Runtime validation requires a runner for the CPU/OS pair being released.
+
+Huge pages are optional and disabled by default. Callers must request them explicitly and must handle ordinary-page fallback unless they disable fallback and accept explicit runtime failure.
+
+## 6. Core Invariants
 
 - All size and alignment arithmetic is checked for overflow.
 - Every resource declares whether it is thread-safe, shard-confined, or externally synchronized.
@@ -52,7 +60,7 @@ OS pages → system resource → page pool → arena/slab/pool → buffers and s
 - Cross-shard final release cannot leak, silently grow an unbounded queue, or call user code.
 - Public headers expose no operating-system allocator type.
 
-## 6. Public API Direction
+## 7. Public API Direction
 
 ```cpp
 namespace voris::mem {
@@ -78,7 +86,7 @@ struct mutable_buffer;
 
 Public interfaces use C++23, move-only ownership where appropriate, `std::expected`-style explicit runtime errors, `std::span`/views for borrowing, and `std::chrono` for time. Provider or operating-system objects remain behind private adapters.
 
-## 7. Error and Resource Model
+## 8. Error and Resource Model
 
 - Ordinary runtime failures are values, not exceptions crossing subsystem boundaries.
 - Error categories are stable identifiers; diagnostic text is not an API contract.
@@ -86,7 +94,7 @@ Public interfaces use C++23, move-only ownership where appropriate, `std::expect
 - Cancellation, deadlines, and shutdown have documented ownership and completion behavior.
 - Metrics and event hooks are narrow callbacks and do not create a hard logging dependency.
 
-## 8. Concurrency and Lifetime
+## 9. Concurrency and Lifetime
 
 - Types declare whether they are thread-safe, shard-confined, immutable, or externally synchronized.
 - A view never extends the lifetime of its source.
@@ -94,7 +102,7 @@ Public interfaces use C++23, move-only ownership where appropriate, `std::expect
 - Cross-shard or cross-thread transfer is explicit and includes ownership transfer.
 - Destruction cannot race with a still-referencing backend, waiter, callback, or provider.
 
-## 9. Testing Contract
+## 10. Testing Contract
 
 - Boundary sizes around alignments, pages, and `SIZE_MAX`.
 - Randomized allocate/free models, remote-release saturation, and fragmentation.
@@ -103,13 +111,13 @@ Public interfaces use C++23, move-only ownership where appropriate, `std::expect
 - Fault injection for metadata and payload allocation failures.
 - Debug-resource poisoning, redzone corruption, stale generation, leak diff, guard-page fallback, and slab observability snapshots.
 
-## 10. Security Review Areas
+## 11. Security Review Areas
 
 - Integer overflow and invalid alignment.
 - Use-after-free and wrong-owner release.
 - Resource exhaustion and budget bypass.
 - Allocator metadata corruption.
 
-## 11. Versioning
+## 12. Versioning
 
 During `0.x`, source compatibility may change between minor versions. Downstream package constraints must pin a compatible minor range. A public ABI promise begins only after a separately approved stability milestone.

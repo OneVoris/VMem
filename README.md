@@ -64,8 +64,10 @@ VMem/
 - [Building](docs/BUILDING.md)
 - [Testing](docs/TESTING.md)
 - [Dependencies](docs/DEPENDENCIES.md)
+- [Migration Notes](docs/MIGRATION.md)
 - [Repository Isolation](docs/REPOSITORY_ISOLATION.md)
 - [Release Process](docs/RELEASES.md)
+- [Release Benchmark Thresholds](docs/RELEASE_BENCHMARKS.md)
 - [Security Policy](SECURITY.md)
 - [Contributing](CONTRIBUTING.md)
 

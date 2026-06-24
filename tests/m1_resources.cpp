@@ -384,11 +384,13 @@ int main() {
     assert(page_size);
     assert(*page_size != 0);
 
-#if defined(__linux__)
+#if defined(_WIN32) || defined(__linux__) || defined(__APPLE__)
     auto span = pages.reserve(*page_size);
     assert(span);
     assert(span->size == *page_size);
     assert(pages.commit(*span));
+    auto* page_bytes = static_cast<volatile unsigned char*>(span->data);
+    page_bytes[0] = 0xC3U;
     assert(pages.decommit(*span));
     assert(pages.release(*span));
 #else

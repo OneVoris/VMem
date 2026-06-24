@@ -135,6 +135,42 @@ if has_config("build_tests") then
         add_tests("m5_debug_stress")
     target_end()
 
+    target("vmem_m6_platform_release_test")
+        set_kind("binary")
+        add_files("tests/m6_platform_release.cpp")
+        add_deps("voris_vmem")
+        add_undefines("NDEBUG")
+        add_tests("m6_platform_release")
+    target_end()
+
+    target("vmem_m6_huge_registry_test")
+        set_kind("binary")
+        add_files("tests/m6_huge_registry.cpp")
+        add_files("src/page_source.cpp")
+        add_includedirs("include", "src")
+        add_defines("VORIS_VMEM_ENABLE_PAGE_SOURCE_TEST_HOOKS", "VORIS_VMEM_BUILD")
+        add_undefines("NDEBUG")
+        add_tests("m6_huge_registry")
+    target_end()
+
+    target("vmem_m6_platform_assumption_x86_64_test")
+        set_kind("binary")
+        add_files("tests/public_headers/main.cpp")
+        add_files("tests/m6_platform_assumption_x86_64.cpp")
+        add_deps("voris_vmem")
+        add_undefines("NDEBUG")
+        add_tests("m6_platform_assumption_x86_64")
+    target_end()
+
+    target("vmem_m6_platform_assumption_arm64_test")
+        set_kind("binary")
+        add_files("tests/public_headers/main.cpp")
+        add_files("tests/m6_platform_assumption_arm64.cpp")
+        add_deps("voris_vmem")
+        add_undefines("NDEBUG")
+        add_tests("m6_platform_assumption_arm64")
+    target_end()
+
     target("vmem_public_headers_test")
         set_kind("binary")
         add_files("tests/public_headers/*.cpp")
@@ -167,6 +203,20 @@ if has_config("build_benchmarks") then
     target("vmem_m5_debug_observability_benchmark")
         set_kind("binary")
         add_files("benchmarks/m5_debug_observability_benchmark.cpp")
+        add_deps("voris_vmem")
+    target_end()
+
+    target("vmem_m6_release_benchmark")
+        set_kind("binary")
+        add_files("benchmarks/m6_release_benchmark.cpp")
+        add_deps("voris_vmem")
+    target_end()
+end
+
+if has_config("build_examples") then
+    target("vmem_basic_usage_example")
+        set_kind("binary")
+        add_files("examples/basic_usage.cpp")
         add_deps("voris_vmem")
     target_end()
 end

@@ -69,11 +69,11 @@ Task identifiers follow `VMEM-M<milestone>-<sequence>`. A task may be checked on
 
 ## M6 — Platforms and Release Readiness
 
-- [ ] **VMEM-M6-001** Complete Windows and macOS page sources.
-- [ ] **VMEM-M6-002** Validate cache-line and alignment assumptions on x86_64 and arm64.
-- [ ] **VMEM-M6-003** Add optional huge-page support, disabled by default with safe fallback.
-- [ ] **VMEM-M6-004** Publish API documentation, examples, and migration notes.
-- [ ] **VMEM-M6-005** Establish release benchmark thresholds and regression alerts.
+- [x] **VMEM-M6-001** Complete Windows and macOS page sources.
+- [x] **VMEM-M6-002** Establish cache-line and alignment assumption APIs with x86_64/arm64 static checks; target-runner runtime validation remains release evidence.
+- [x] **VMEM-M6-003** Add optional huge-page support, disabled by default with safe fallback.
+- [x] **VMEM-M6-004** Publish API documentation, examples, and migration notes.
+- [x] **VMEM-M6-005** Establish release benchmark thresholds and regression alerts.
 
 ## Definition of Done
 

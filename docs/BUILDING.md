@@ -28,6 +28,8 @@ xmake run vmem_m2_resources_benchmark
 xmake run vmem_m3_buffers_benchmark
 xmake run vmem_m4_budgets_benchmark
 xmake run vmem_m5_debug_observability_benchmark
+xmake run vmem_m6_release_benchmark > m6-release-benchmark.txt
+python tools/check_release_benchmark_thresholds.py m6-release-benchmark.txt
 xmake run vmem_m3_buffer_chain_fuzz
 xmake run vmem_m5_allocator_corruption_fuzz
 ```
@@ -39,6 +41,16 @@ The M3 buffer benchmark prints deterministic comma-separated lines for append, c
 The M4 budget benchmark prints deterministic comma-separated lines for standalone hierarchical reservation, commit, release, and concurrent rollback smoke workloads. It validates that snapshots are empty after each workload.
 
 The M5 debug observability benchmark prints deterministic comma-separated lines for debug allocation/deallocation, leak snapshot diffing, and slab size-class snapshot pulls. The M5 allocator-corruption fuzz target is a dependency-free deterministic smoke binary that corrupts redzones and verifies `debug_resource` reports ownership failure without losing live-block observability.
+
+The M6 release benchmark prints deterministic comma-separated lines for page-source round trips, huge-page preference with fallback, and aligned system-resource allocation. Redirect its output to a file before running `tools/check_release_benchmark_thresholds.py`. The thresholds are conservative release-readiness alerts, not portable performance claims.
+
+Examples are optional and are enabled separately:
+
+```bash
+xmake f -m debug --build_examples=y
+xmake
+xmake run vmem_basic_usage_example
+```
 
 Sanitizer visibility probes are opt-in and are not registered as normal tests because instrumented runs are expected to emit sanitizer diagnostics:
 
@@ -59,7 +71,7 @@ TSAN_OPTIONS=halt_on_error=1 xmake run vmem_m5_tsan_visibility_probe
 
 On unsupported local toolchains, such as this repository's Windows/MSVC default, the probe binaries build and print `status=not_instrumented`.
 
-M1 is expected to build on Ubuntu, Windows, and macOS. Linux exercises the real OS page source. Windows and macOS exercise the same public headers, portable resources, and fake-page-source chunk contracts while `os_page_source` page operations return `errc::unsupported_platform` until the M6 platform implementations are completed.
+VMem is expected to build on Ubuntu, Windows, and macOS. Linux, Windows, and macOS exercise the real OS page-source contract for reserve, commit, decommit, and release. Unknown platforms keep the same public headers and return `errc::unsupported_platform` for page operations.
 
 ## Resolve Voris Dependencies
 
@@ -77,7 +89,7 @@ The repository never assumes sibling source checkouts. Development overrides mus
 |---|---:|---|
 | `build_shared` | `false` | Build the primary library as a shared library. |
 | `build_tests` | `false` | Build and register test targets. |
-| `build_examples` | `false` | Build examples when implementation examples exist. |
+| `build_examples` | `false` | Build examples. |
 | `build_benchmarks` | `false` | Build benchmark targets. |
 | `build_fuzzers` | `false` | Build fuzz targets with the selected toolchain. |
 | `build_sanitizer_probes` | `false` | Build explicit expected-failure M5 sanitizer visibility probes. |

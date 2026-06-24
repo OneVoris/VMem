@@ -22,6 +22,7 @@
 - M3 buffer contract tests cover borrowed view slicing, unique-buffer move/reset/resize ownership, shared-buffer final release on the releasing thread, owner generation checks, deterministic reference-count overflow, remote final release dispatch, small-inline chain append/prepend/consume/trim/slice/coalesce, bounded coalesce failure, parser helpers across segment boundaries, private gather conversion, and deterministic randomized chain properties.
 - M4 budget contract tests cover child reservations exhausting parent hard limits, hard-limit failure atomicity across dimensions, depth-limit rejection before token creation, soft-limit events without rejection, high/low watermark crossings, disabled default low watermarks, callbacks that re-enter the same budget after locks are released, move construction and move assignment of reservation tokens, commit/rollback idempotence, release underflow, concurrent reservations, and snapshot export dimensions.
 - M5 debug and observability tests cover poison-on-allocate/free, configurable redzones, redzone corruption detection, double free, wrong resource, stale generation descriptors, guard-page request/fallback counters, explicit leak snapshot diffs, slab per-size-class active/free/remote/fragmentation snapshots, threaded debug-resource stress, and deterministic allocator-corruption fuzz smoke.
+- M6 platform tests cover real page-source reserve/commit/decommit/release contracts on the platform running the test, optional huge-page fallback, public-header compilation for platform assumptions, and preprocessor-simulated x86_64/arm64 cache-line static assertions. Runtime validation for each CPU/OS pair requires a target runner for that pair.
 
 ## Required Configurations
 
@@ -43,6 +44,8 @@ The M3 smoke benchmark target is `vmem_m3_buffers_benchmark`. It reports append,
 The M4 smoke benchmark target is `vmem_m4_budgets_benchmark`. It prints deterministic comma-separated lines for reserve/commit/release and concurrent reserve/rollback workloads, and terminates if either workload leaves non-empty snapshots behind. The output is a local validation aid, not a release threshold.
 
 The M5 smoke benchmark target is `vmem_m5_debug_observability_benchmark`. It reports debug allocation/deallocation, leak snapshot diffing, and slab size-class snapshot pull workloads. The M5 fuzz smoke target is `vmem_m5_allocator_corruption_fuzz`, and the threaded stress target is `vmem_m5_debug_stress_test`. The fuzz smoke covers right and left redzone corruption, double free, wrong resource, and stale descriptor paths.
+
+Release verification, outside normal `xmake test`, includes optional example builds and benchmark smoke alerts. The M6 smoke benchmark target is `vmem_m6_release_benchmark`. It reports page-source round trips, huge-page preference with fallback, and aligned `system_resource` allocation. `tools/check_release_benchmark_thresholds.py` checks the output against conservative local regression thresholds documented in [Release Benchmark Thresholds](RELEASE_BENCHMARKS.md).
 
 ## Sanitizer Visibility
 

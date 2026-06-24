@@ -8,12 +8,13 @@ VMem uses semantic versions. During `0.x`, minor versions may contain source-inc
 
 1. Close the milestone's required TODO items and ADRs.
 2. Run repository validation, tests, sanitizers, fuzz regressions, and required benchmarks.
-3. Update `CHANGELOG.md`, compatibility notes, and `voris-package.toml`.
-4. Create and sign the source tag `vX.Y.Z`.
-5. Publish an immutable source archive and SHA-256.
-6. Submit the new version to VXrepo.
-7. Verify a clean VXrepo install in Debug/Release and supported feature combinations.
-8. Notify downstream repositories only after the VXrepo recipe is available.
+3. Run release benchmark threshold alerts documented in [Release Benchmark Thresholds](RELEASE_BENCHMARKS.md) when the milestone has benchmark gates.
+4. Update `CHANGELOG.md`, compatibility notes, and `voris-package.toml`.
+5. Create and sign the source tag `vX.Y.Z`.
+6. Publish an immutable source archive and SHA-256.
+7. Submit the new version to VXrepo.
+8. Verify a clean VXrepo install in Debug/Release and supported feature combinations.
+9. Notify downstream repositories only after the VXrepo recipe is available.
 
 ## Upstream/Downstream Order
 
