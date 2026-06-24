@@ -2,12 +2,18 @@
 #include <voris/mem/resource_ref.hpp>
 #include <voris/mem/tag.hpp>
 
+#undef NDEBUG
+
 #include <cassert>
 #include <cstddef>
 #include <expected>
 #include <limits>
 #include <string_view>
 #include <type_traits>
+
+#if defined(NDEBUG)
+#    error "VMem assert-style tests require assertions enabled"
+#endif
 
 namespace {
 
@@ -96,8 +102,27 @@ int main() {
     assert(checked_add(std::numeric_limits<std::size_t>::max(), 1).error() == errc::size_overflow);
     assert(checked_mul(6, 7).value() == 42);
     assert(checked_mul(std::numeric_limits<std::size_t>::max(), 2).error() == errc::size_overflow);
+    assert(voris::mem::checked_sub(30, 20).value() == 10);
+    assert(voris::mem::checked_sub(10, 20).error() == errc::wrong_owner);
 
     constexpr voris::mem::memory_tag tag{"contracts"};
+
+    voris::mem::resource_ref empty_ref;
+    auto empty_allocate = empty_ref.allocate(8, alignof(std::max_align_t), tag);
+    assert(!empty_allocate);
+    assert(empty_allocate.error() == errc::wrong_owner);
+    auto empty_deallocate =
+        empty_ref.deallocate(voris::mem::allocation{nullptr, 0, alignof(std::max_align_t)});
+    assert(!empty_deallocate);
+    assert(empty_deallocate.error() == errc::wrong_owner);
+    auto empty_remote =
+        empty_ref.remote_deallocate(voris::mem::allocation{nullptr, 0, alignof(std::max_align_t)});
+    assert(!empty_remote);
+    assert(empty_remote.error() == errc::wrong_owner);
+    assert(empty_ref.traits().name.empty());
+    assert(empty_ref.usage().active_bytes == 0);
+    assert(empty_ref.usage().active_allocations == 0);
+
     auto request = voris::mem::make_allocation_request(32, alignof(std::max_align_t), tag);
     assert(request.size == 32);
     assert(request.alignment == alignof(std::max_align_t));

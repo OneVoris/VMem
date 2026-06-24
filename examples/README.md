@@ -1,3 +1,7 @@
 # Examples
 
-Examples are added with the milestone that introduces the public capability they demonstrate. Every example must be bounded, buildable, and covered by CI.
+Examples are bounded, buildable, and covered by the optional examples build.
+
+Current examples:
+
+- `vmem_basic_usage_example` demonstrates `system_resource`, `resource_ref`, `unique_buffer`, `buffer_chain`, and `os_page_source`.

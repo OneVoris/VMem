@@ -54,5 +54,6 @@ A milestone that depends on a new upstream capability may start only after that 
 - Required dependency versions are published in VXrepo.
 - CI passes on the declared Tier-1 platform/compiler matrix.
 - Security-sensitive parsers and state machines have fuzz or adversarial tests.
+- Release benchmark smoke thresholds are either passing or explicitly waived with recorded environment evidence.
 - The changelog and compatibility notes describe every public behavior change.
 - A project license has been selected and added.

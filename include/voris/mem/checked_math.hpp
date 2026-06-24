@@ -29,6 +29,14 @@ checked_mul(std::size_t lhs, std::size_t rhs) noexcept {
 }
 
 [[nodiscard]] constexpr std::expected<std::size_t, errc>
+checked_sub(std::size_t lhs, std::size_t rhs) noexcept {
+    if (lhs < rhs) {
+        return std::unexpected(errc::wrong_owner);
+    }
+    return lhs - rhs;
+}
+
+[[nodiscard]] constexpr std::expected<std::size_t, errc>
 align_up(std::size_t value, std::size_t alignment) noexcept {
     if (!is_power_of_two(alignment)) {
         return std::unexpected(errc::invalid_alignment);
