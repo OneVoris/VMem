@@ -59,13 +59,13 @@ Task identifiers follow `VMEM-M<milestone>-<sequence>`. A task may be checked on
 
 ## M5 — Debugging, Hardening, and Observability
 
-- [ ] **VMEM-M5-001** Implement poison-on-allocate/free and configurable redzones.
-- [ ] **VMEM-M5-002** Detect double free, wrong resource, and wrong generation.
-- [ ] **VMEM-M5-003** Implement guard pages for large allocations in debug mode.
-- [ ] **VMEM-M5-004** Implement leak-snapshot diffing without requiring a global process-exit hook.
-- [ ] **VMEM-M5-005** Verify that custom resources preserve ASan, UBSan, and TSan diagnostics.
-- [ ] **VMEM-M5-006** Add allocator-corruption fuzz and stress harnesses.
-- [ ] **VMEM-M5-007** Export per-size-class active, free, remote, and fragmentation snapshots.
+- [x] **VMEM-M5-001** Implement poison-on-allocate/free and configurable redzones.
+- [x] **VMEM-M5-002** Detect double free, wrong resource, and wrong generation.
+- [x] **VMEM-M5-003** Implement guard pages for large allocations in debug mode.
+- [x] **VMEM-M5-004** Implement leak-snapshot diffing without requiring a global process-exit hook.
+- [x] **VMEM-M5-005** Verify that custom resources preserve ASan, UBSan, and TSan diagnostics.
+- [x] **VMEM-M5-006** Add allocator-corruption fuzz and stress harnesses.
+- [x] **VMEM-M5-007** Export per-size-class active, free, remote, and fragmentation snapshots.
 
 ## M6 — Platforms and Release Readiness
 

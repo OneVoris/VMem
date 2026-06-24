@@ -33,6 +33,19 @@ struct slab_remote_snapshot {
     std::size_t slow_path_count{};
 };
 
+struct slab_size_class_snapshot {
+    std::size_t class_index{};
+    std::size_t block_size{};
+    std::size_t block_alignment{};
+    std::size_t active_count{};
+    std::size_t free_count{};
+    std::size_t remote_count{};
+    std::size_t active_bytes{};
+    std::size_t free_bytes{};
+    std::size_t remote_bytes{};
+    std::size_t fragmentation_bytes{};
+};
+
 struct slab_options {
     std::size_t slab_size{64 * 1024};
     std::size_t remote_queue_capacity{256};
@@ -245,6 +258,62 @@ public:
             .saturated_count = remote_saturated_count_,
             .slow_path_count = remote_slow_path_count_,
         };
+    }
+
+    [[nodiscard]] std::array<slab_size_class_snapshot, default_slab_size_classes.size()>
+    size_class_snapshots() const noexcept {
+        std::array<slab_size_class_snapshot, default_slab_size_classes.size()> snapshots{};
+        for (std::size_t index = 0; index < default_slab_size_classes.size(); ++index) {
+            snapshots[index].class_index = index;
+            snapshots[index].block_size = default_slab_size_classes[index].block_size;
+            snapshots[index].block_alignment = default_slab_size_classes[index].block_alignment;
+        }
+
+        // Snapshot lock order is state then remote. Remote-free paths do not hold the
+        // remote lock while acquiring state, so this produces a consistent view.
+        std::lock_guard state_lock{state_mutex_};
+        std::lock_guard remote_lock{remote_mutex_};
+        for (const auto& [_, record] : active_) {
+            auto& snapshot = snapshots[record.bucket_index];
+            if (record.allocated) {
+                snapshot.active_count =
+                    checked_add(snapshot.active_count, 1U).value_or(snapshot.active_count);
+                snapshot.active_bytes =
+                    checked_add(snapshot.active_bytes, record.block_size)
+                        .value_or(snapshot.active_bytes);
+            } else {
+                snapshot.free_count =
+                    checked_add(snapshot.free_count, 1U).value_or(snapshot.free_count);
+                snapshot.free_bytes =
+                    checked_add(snapshot.free_bytes, record.block_size)
+                        .value_or(snapshot.free_bytes);
+            }
+        }
+
+        for (const auto& descriptor : remote_queue_) {
+            for (auto& snapshot : snapshots) {
+                if (snapshot.block_size == descriptor.block.size) {
+                    snapshot.remote_count =
+                        checked_add(snapshot.remote_count, 1U).value_or(snapshot.remote_count);
+                    snapshot.remote_bytes =
+                        checked_add(snapshot.remote_bytes, descriptor.block.size)
+                            .value_or(snapshot.remote_bytes);
+                    snapshot.active_count =
+                        checked_sub(snapshot.active_count, 1U).value_or(snapshot.active_count);
+                    snapshot.active_bytes =
+                        checked_sub(snapshot.active_bytes, descriptor.block.size)
+                            .value_or(snapshot.active_bytes);
+                    break;
+                }
+            }
+        }
+
+        for (auto& snapshot : snapshots) {
+            auto free_and_remote = checked_add(snapshot.free_bytes, snapshot.remote_bytes);
+            snapshot.fragmentation_bytes =
+                free_and_remote ? *free_and_remote : snapshot.free_bytes;
+        }
+        return snapshots;
     }
 
     [[nodiscard]] resource_traits traits() const noexcept {

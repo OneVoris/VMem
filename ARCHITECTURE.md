@@ -101,6 +101,7 @@ Public interfaces use C++23, move-only ownership where appropriate, `std::expect
 - Buffer-chain property tests and parser helpers across segment boundaries.
 - ASan/UBSan/TSan visibility through every custom resource.
 - Fault injection for metadata and payload allocation failures.
+- Debug-resource poisoning, redzone corruption, stale generation, leak diff, guard-page fallback, and slab observability snapshots.
 
 ## 10. Security Review Areas
 

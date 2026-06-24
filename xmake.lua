@@ -30,6 +30,12 @@ option("build_fuzzers")
     set_showmenu(true)
 option_end()
 
+option("build_sanitizer_probes")
+    set_default(false)
+    set_showmenu(true)
+    set_description("Build explicit expected-failure sanitizer visibility probes")
+option_end()
+
 option("with_voris_dependencies")
     set_default(false)
     set_showmenu(true)
@@ -113,6 +119,22 @@ if has_config("build_tests") then
         add_tests("m4_budgets")
     target_end()
 
+    target("vmem_m5_debug_observability_test")
+        set_kind("binary")
+        add_files("tests/m5_debug_observability.cpp")
+        add_deps("voris_vmem")
+        add_undefines("NDEBUG")
+        add_tests("m5_debug_observability")
+    target_end()
+
+    target("vmem_m5_debug_stress_test")
+        set_kind("binary")
+        add_files("tests/m5_debug_stress.cpp")
+        add_deps("voris_vmem")
+        add_undefines("NDEBUG")
+        add_tests("m5_debug_stress")
+    target_end()
+
     target("vmem_public_headers_test")
         set_kind("binary")
         add_files("tests/public_headers/*.cpp")
@@ -141,6 +163,12 @@ if has_config("build_benchmarks") then
         add_files("benchmarks/m4_budgets_benchmark.cpp")
         add_deps("voris_vmem")
     target_end()
+
+    target("vmem_m5_debug_observability_benchmark")
+        set_kind("binary")
+        add_files("benchmarks/m5_debug_observability_benchmark.cpp")
+        add_deps("voris_vmem")
+    target_end()
 end
 
 if has_config("build_fuzzers") then
@@ -148,5 +176,35 @@ if has_config("build_fuzzers") then
         set_kind("binary")
         add_files("fuzz/buffer_chain_fuzz.cpp")
         add_deps("voris_vmem")
+    target_end()
+
+    target("vmem_m5_allocator_corruption_fuzz")
+        set_kind("binary")
+        add_files("fuzz/allocator_corruption_fuzz.cpp")
+        add_deps("voris_vmem")
+    target_end()
+end
+
+if has_config("build_sanitizer_probes") then
+    target("vmem_m5_asan_ubsan_visibility_probe")
+        set_kind("binary")
+        add_files("tests/m5_sanitizer_visibility.cpp")
+        add_deps("voris_vmem")
+        add_defines("VORIS_VMEM_M5_ASAN_UBSAN_VISIBILITY_PROBE")
+        if not is_plat("windows") then
+            add_cxflags("-fsanitize=address,undefined", "-fno-omit-frame-pointer", {force = true})
+            add_ldflags("-fsanitize=address,undefined", {force = true})
+        end
+    target_end()
+
+    target("vmem_m5_tsan_visibility_probe")
+        set_kind("binary")
+        add_files("tests/m5_sanitizer_visibility.cpp")
+        add_deps("voris_vmem")
+        add_defines("VORIS_VMEM_M5_TSAN_VISIBILITY_PROBE")
+        if not is_plat("windows") then
+            add_cxflags("-fsanitize=thread", "-fno-omit-frame-pointer", {force = true})
+            add_ldflags("-fsanitize=thread", {force = true})
+        end
     target_end()
 end

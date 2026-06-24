@@ -97,6 +97,26 @@ Snapshots are immutable value objects returned by `snapshots()` or passed to `ex
 
 Event callbacks use `budget_event_sink`; snapshot export accepts a caller-provided sink. Both are optional and have no logging dependency. `budget_event_sink` requires a sink that is nothrow-invocable with `const budget_event&`. User callbacks are invoked after internal locks have been released, so a callback may call back into the same budget. Rollback/destructor cleanup does not depend on event-record allocation: if a low-watermark event record cannot be allocated while rolling back reserved bytes, accounting is still released and the event is dropped; counters still reflect the crossing.
 
+## M5 Debugging, Hardening, and Observability Contracts
+
+M5 adds the following public header:
+
+```cpp
+#include <voris/mem/debug_resource.hpp>
+```
+
+`debug_resource` is a caller-owned wrapper around `resource_ref`. It tracks resource-local allocation metadata, places configurable redzones around payload bytes, and can poison payloads on allocation and before free with deterministic byte patterns. When `debug_resource_options::preserve_sanitizer_diagnostics` is true, sanitizer builds also poison debug redzones through ASan integration so out-of-bounds payload writes remain visible to compiler instrumentation. `deallocate` remains `noexcept`; invalid shape, wrong resource, double free, stale generation, and redzone corruption are reported as `errc::wrong_owner`.
+
+The plain `allocate()` and `deallocate()` methods keep the normal `allocation` contract. Generation-aware callers can use `allocate_block()` and `deallocate_block(debug_allocation)` to validate a resource-specific generation token. This mirrors the M2 fixed-pool and slab descriptor style without changing `allocation`.
+
+Large allocations can request guard pages by setting `debug_resource_options::guard_pages_for_large_allocations` and `guard_page_threshold`. Where `os_page_source` supports reservation and commit, the wrapper reserves guard pages around the committed payload span. Unsupported platforms fall back to the wrapped upstream resource and expose fallback counts through `debug_snapshot()`. Windows and macOS page-source completion remains M6 scope.
+
+Leak checks are explicit and do not use a global process-exit hook. `leak_snapshot()` returns active allocation records, including block, generation, tag, source location, and guard-page status. `diff_leak_snapshots(before, after)` returns added and removed records plus byte totals.
+
+`debug_resource` metadata is internally synchronized, but the resource traits returned by `traits()` follow the wrapped resource. Wrapping a shard-confined resource does not change that resource's ownership or shard contract. Payload memory remains ordinary application memory so ASan, UBSan, and TSan can still diagnose application-side invalid accesses, undefined behavior, and races in sanitizer builds.
+
+`slab_resource::size_class_snapshots()` returns one immutable value per default size class. Each snapshot includes active, free, queued remote, active bytes, free bytes, remote bytes, and fragmentation bytes. The snapshot takes the slab state lock before the remote-queue lock and reports queued remote blocks as remote, not active. The method is observational only; it does not drain remote frees or compact slabs.
+
 ## M0 Resource Contracts
 
 The M0 public surface is limited to contracts and value types:
