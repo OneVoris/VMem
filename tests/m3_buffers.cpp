@@ -391,6 +391,8 @@ void test_shared_buffer() {
     auto stale_release = generation->reset();
     assert(!stale_release);
     assert(stale_release.error() == voris::mem::errc::wrong_owner);
+    generation->test_override_handle_generation(11U);
+    assert(generation->reset());
 #endif
 }
 

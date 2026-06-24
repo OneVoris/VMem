@@ -315,10 +315,13 @@ int main() {
         resource_ref{byte_backend},
         fault_injection_options{.fail_after_requested_bytes = 10},
     };
-    assert(fail_after_bytes.allocate(make_allocation_request(6, alignof(std::max_align_t))));
+    auto under_byte_limit =
+        fail_after_bytes.allocate(make_allocation_request(6, alignof(std::max_align_t)));
+    assert(under_byte_limit);
     auto over_bytes = fail_after_bytes.allocate(make_allocation_request(5, alignof(std::max_align_t)));
     assert(!over_bytes);
     assert(over_bytes.error() == errc::out_of_memory);
+    assert(fail_after_bytes.deallocate(*under_byte_limit));
 
     constexpr memory_tag blocked_tag{"blocked"};
     system_resource tag_backend;
