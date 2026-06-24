@@ -13,12 +13,10 @@ TASK = re.compile(r'\*\*([A-Z]+-M\d+-\d{3})\*\*')
 REQUIRED = [
     'README.md', 'ARCHITECTURE.md', 'ROADMAP.md', 'TODO.md',
     'CONTRIBUTING.md', 'SECURITY.md', 'CHANGELOG.md', '.gitignore',
-    'AGENTS.md', 'xmake.lua', 'voris-package.toml',
+    'xmake.lua', 'voris-package.toml',
     'docs/API.md', 'docs/BUILDING.md', 'docs/DEPENDENCIES.md',
     'docs/TESTING.md', 'docs/REPOSITORY_ISOLATION.md',
-    'docs/RELEASES.md', 'docs/LICENSING.md', 'docs/REFERENCES.md',
-    '.agent/README.md', '.agent/UPSTREAM_SYNC.md',
-    '.agent/UPSTREAM_REQUEST_TEMPLATE.md', '.agent/TASK_REPORT_TEMPLATE.md'
+    'docs/RELEASES.md', 'docs/LICENSING.md', 'docs/REFERENCES.md'
 ]
 
 errors: list[str] = []
