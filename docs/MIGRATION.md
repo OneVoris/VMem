@@ -1,6 +1,6 @@
 # Migration Notes
 
-## Unreleased M6
+## v0.1.0
 
 ### Page Source Platforms
 

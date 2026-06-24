@@ -9,6 +9,6 @@
 #endif
 
 int main() {
-    assert(!voris::mem::version().empty());
+    assert(voris::mem::version() == "0.1.0");
     return 0;
 }

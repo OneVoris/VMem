@@ -25,6 +25,9 @@ jobs:
       - name: Validate repository
         run: python tools/check_repository.py
 
+      - name: Validate release readiness
+        run: python tools/check_release_readiness.py
+
       - name: Configure Debug
         run: xmake f -m debug --build_tests=y
 
@@ -42,3 +45,90 @@ jobs:
 
       - name: Test Release
         run: xmake test
+
+  asan-ubsan:
+    name: ubuntu-latest-asan-ubsan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install XMake
+        uses: xmake-io/github-action-setup-xmake@v1
+        with:
+          xmake-version: latest
+
+      - name: Configure ASan and UBSan
+        run: xmake f -m debug --build_tests=y --build_fuzzers=y --build_sanitizer_probes=y --sanitize=address-undefined
+
+      - name: Build ASan and UBSan
+        run: xmake
+
+      - name: Test ASan and UBSan
+        run: xmake test
+
+      - name: Run fuzz smoke under ASan and UBSan
+        run: |
+          xmake run vmem_m3_buffer_chain_fuzz
+          xmake run vmem_m5_allocator_corruption_fuzz
+
+      - name: Verify ASan visibility probe reports diagnostics
+        shell: bash
+        run: |
+          set +e
+          ASAN_OPTIONS=halt_on_error=1 xmake run vmem_m5_asan_ubsan_visibility_probe > asan.log 2>&1
+          status=$?
+          set -e
+          cat asan.log
+          test "$status" -ne 0
+          grep -E "AddressSanitizer|use-after-poison|heap-buffer-overflow" asan.log
+
+      - name: Verify UBSan visibility probe reports diagnostics
+        shell: bash
+        run: |
+          set +e
+          UBSAN_OPTIONS=halt_on_error=1 xmake run vmem_m5_asan_ubsan_visibility_probe ubsan > ubsan.log 2>&1
+          status=$?
+          set -e
+          cat ubsan.log
+          test "$status" -ne 0
+          grep -E "runtime error: signed integer overflow|UndefinedBehaviorSanitizer" ubsan.log
+
+  tsan:
+    name: ubuntu-latest-tsan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install XMake
+        uses: xmake-io/github-action-setup-xmake@v1
+        with:
+          xmake-version: latest
+
+      - name: Configure TSan
+        run: xmake f -m debug --build_tests=y --build_fuzzers=y --build_sanitizer_probes=y --sanitize=thread
+
+      - name: Build TSan
+        run: xmake
+
+      - name: Test TSan
+        run: xmake test
+
+      - name: Run fuzz smoke under TSan
+        run: |
+          xmake run vmem_m3_buffer_chain_fuzz
+          xmake run vmem_m5_allocator_corruption_fuzz
+
+      - name: Verify TSan visibility probe reports diagnostics
+        shell: bash
+        run: |
+          set +e
+          TSAN_OPTIONS=halt_on_error=1 xmake run vmem_m5_tsan_visibility_probe > tsan.log 2>&1
+          status=$?
+          set -e
+          cat tsan.log
+          test "$status" -ne 0
+          grep -E "ThreadSanitizer|data race" tsan.log

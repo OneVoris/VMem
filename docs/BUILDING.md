@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- XMake 3.0.0 or newer.
+- The current XMake release. VMem does not pin a minimum XMake version in repository metadata.
 - A C++23 compiler and standard library.
 - Python 3.11 or newer for repository validation tools.
 - VXrepo registration when `--with_voris_dependencies=y` is enabled.
@@ -55,9 +55,8 @@ xmake run vmem_basic_usage_example
 Sanitizer visibility probes are opt-in and are not registered as normal tests because instrumented runs are expected to emit sanitizer diagnostics:
 
 ```bash
-xmake f -m debug --build_sanitizer_probes=y
+xmake f -m debug --build_sanitizer_probes=y --sanitize=address-undefined
 xmake build vmem_m5_asan_ubsan_visibility_probe
-xmake build vmem_m5_tsan_visibility_probe
 
 # On Clang/GCC ASan builds, expected to fail with an ASan use-after-poison report.
 ASAN_OPTIONS=halt_on_error=1 xmake run vmem_m5_asan_ubsan_visibility_probe
@@ -65,11 +64,14 @@ ASAN_OPTIONS=halt_on_error=1 xmake run vmem_m5_asan_ubsan_visibility_probe
 # On Clang/GCC UBSan builds, expected to fail with a signed-overflow report when halt_on_error is set.
 UBSAN_OPTIONS=halt_on_error=1 xmake run vmem_m5_asan_ubsan_visibility_probe ubsan
 
+xmake f -m debug --build_sanitizer_probes=y --sanitize=thread
+xmake build vmem_m5_tsan_visibility_probe
+
 # On Clang/GCC TSan builds, expected to fail with a data-race report when halt_on_error is set.
 TSAN_OPTIONS=halt_on_error=1 xmake run vmem_m5_tsan_visibility_probe
 ```
 
-On unsupported local toolchains, such as this repository's Windows/MSVC default, the probe binaries build and print `status=not_instrumented`.
+On unsupported local toolchains, such as this repository's Windows/MSVC default, the ASan and TSan probe modes print `status=not_instrumented`; the UBSan mode completes without a sanitizer abort.
 
 VMem is expected to build on Ubuntu, Windows, and macOS. Linux, Windows, and macOS exercise the real OS page-source contract for reserve, commit, decommit, and release. Unknown platforms keep the same public headers and return `errc::unsupported_platform` for page operations.
 
@@ -93,6 +95,7 @@ The repository never assumes sibling source checkouts. Development overrides mus
 | `build_benchmarks` | `false` | Build benchmark targets. |
 | `build_fuzzers` | `false` | Build fuzz targets with the selected toolchain. |
 | `build_sanitizer_probes` | `false` | Build explicit expected-failure M5 sanitizer visibility probes. |
+| `sanitize` | `none` | Enable `address-undefined` or `thread` sanitizer flags on supported non-Windows toolchains. |
 | `with_voris_dependencies` | `false` | Resolve internal packages through VXrepo. |
 
 Project-specific component options are documented in `xmake.lua` comments and the architecture document.
@@ -107,6 +110,7 @@ Where the compiler supports sanitizer flags, run the M5 debug, stress, fuzz, and
 
 ```bash
 python tools/check_repository.py
+python tools/check_release_readiness.py
 ```
 
-The validator checks required files, documentation language, ignored Agent documents, TODO identifiers, and relative Markdown links.
+The repository validator checks required files, documentation language, ignored Agent documents, TODO identifiers, and relative Markdown links. The release readiness validator checks v0.1.0 version metadata, GPLv3 licensing, commercial licensing notes, CI sanitizer coverage, release evidence, and Definition of Done status.

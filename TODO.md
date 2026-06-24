@@ -77,9 +77,9 @@ Task identifiers follow `VMEM-M<milestone>-<sequence>`. A task may be checked on
 
 ## Definition of Done
 
-- [ ] Behavioral contracts, thread safety, and lifetime rules are documented publicly.
-- [ ] Normal, overflow, OOM, wrong-owner, and concurrent-release paths are tested.
-- [ ] Debug, Release, ASan+UBSan, and TSan configurations pass.
-- [ ] Hot-path work has reproducible benchmarks with no unexplained RSS or fragmentation regression.
-- [ ] Every public header compiles independently and exposes no private OS or third-party types.
-- [ ] TODOs, ADRs, and the changelog are updated in the same change.
+- [x] Behavioral contracts, thread safety, and lifetime rules are documented publicly.
+- [x] Normal, overflow, OOM, wrong-owner, and concurrent-release paths are tested.
+- [x] Debug, Release, ASan+UBSan, and TSan configurations pass.
+- [x] Hot-path work has reproducible benchmarks with no unexplained RSS or fragmentation regression.
+- [x] Every public header compiles independently and exposes no private OS or third-party types.
+- [x] TODOs, ADRs, and the changelog are updated in the same change.

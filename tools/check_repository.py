@@ -16,7 +16,9 @@ REQUIRED = [
     'xmake.lua', 'voris-package.toml',
     'docs/API.md', 'docs/BUILDING.md', 'docs/DEPENDENCIES.md',
     'docs/TESTING.md', 'docs/REPOSITORY_ISOLATION.md',
-    'docs/RELEASES.md', 'docs/LICENSING.md', 'docs/REFERENCES.md'
+    'docs/RELEASES.md', 'docs/RELEASE_EVIDENCE.md',
+    'docs/LICENSING.md', 'docs/REFERENCES.md',
+    'tools/check_release_readiness.py'
 ]
 
 errors: list[str] = []

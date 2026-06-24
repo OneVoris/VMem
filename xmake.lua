@@ -1,6 +1,5 @@
 set_project("VMem")
 set_version("0.1.0")
-set_xmakever("3.0.0")
 set_languages("cxx23")
 set_warnings("allextra")
 add_rules("mode.debug", "mode.release")
@@ -36,6 +35,13 @@ option("build_sanitizer_probes")
     set_description("Build explicit expected-failure sanitizer visibility probes")
 option_end()
 
+option("sanitize")
+    set_default("none")
+    set_showmenu(true)
+    set_values("none", "address-undefined", "thread")
+    set_description("Enable sanitizer flags for supported non-Windows toolchains")
+option_end()
+
 option("with_voris_dependencies")
     set_default(false)
     set_showmenu(true)
@@ -44,6 +50,17 @@ option_end()
 
 if has_config("with_voris_dependencies") then
     -- This repository has no internal upstream package.
+end
+
+local sanitize = get_config("sanitize")
+if not is_plat("windows") then
+    if sanitize == "address-undefined" then
+        add_cxflags("-fsanitize=address,undefined", "-fno-omit-frame-pointer", {force = true})
+        add_ldflags("-fsanitize=address,undefined", {force = true})
+    elseif sanitize == "thread" then
+        add_cxflags("-fsanitize=thread", "-fno-omit-frame-pointer", {force = true})
+        add_ldflags("-fsanitize=thread", {force = true})
+    end
 end
 
 target("voris_vmem")
@@ -241,10 +258,6 @@ if has_config("build_sanitizer_probes") then
         add_files("tests/m5_sanitizer_visibility.cpp")
         add_deps("voris_vmem")
         add_defines("VORIS_VMEM_M5_ASAN_UBSAN_VISIBILITY_PROBE")
-        if not is_plat("windows") then
-            add_cxflags("-fsanitize=address,undefined", "-fno-omit-frame-pointer", {force = true})
-            add_ldflags("-fsanitize=address,undefined", {force = true})
-        end
     target_end()
 
     target("vmem_m5_tsan_visibility_probe")
@@ -252,9 +265,5 @@ if has_config("build_sanitizer_probes") then
         add_files("tests/m5_sanitizer_visibility.cpp")
         add_deps("voris_vmem")
         add_defines("VORIS_VMEM_M5_TSAN_VISIBILITY_PROBE")
-        if not is_plat("windows") then
-            add_cxflags("-fsanitize=thread", "-fno-omit-frame-pointer", {force = true})
-            add_ldflags("-fsanitize=thread", {force = true})
-        end
     target_end()
 end

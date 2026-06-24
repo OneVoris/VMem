@@ -29,4 +29,6 @@ An upstream release must be available through VXrepo before a downstream release
 
 ## Licensing Gate
 
-No public release occurs until the repository contains an approved license and package metadata reflects it.
+Public releases use the GNU General Public License version 3 (`GPL-3.0-only`) unless a later release explicitly changes the license through the same review process. Package metadata must reflect the GPLv3 license before tagging.
+
+Separate commercial licenses are available by private agreement with the project owner. Commercial licensing is not implied by a public source tag, package recipe, or binary artifact.

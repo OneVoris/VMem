@@ -2,7 +2,7 @@
 
 Low-level memory resources, byte buffers, allocator diagnostics, and hierarchical memory budgets for the Voris stack.
 
-> Status: architecture and implementation-planning scaffold. The public API and ABI are not stable. A project license must be selected before public distribution.
+> Status: v0.1.0 initial release. The public API and ABI remain unstable during the 0.x line.
 
 ## Design Priorities
 
@@ -67,11 +67,12 @@ VMem/
 - [Migration Notes](docs/MIGRATION.md)
 - [Repository Isolation](docs/REPOSITORY_ISOLATION.md)
 - [Release Process](docs/RELEASES.md)
+- [Release Evidence](docs/RELEASE_EVIDENCE.md)
 - [Release Benchmark Thresholds](docs/RELEASE_BENCHMARKS.md)
 - [Security Policy](SECURITY.md)
 - [Contributing](CONTRIBUTING.md)
 
-## Build the Scaffold
+## Build VMem
 
 ```bash
 xmake f -m debug --build_tests=y
@@ -79,7 +80,7 @@ xmake
 xmake test
 ```
 
-The scaffold builds without resolving upstream packages. Once implementation begins, register VXrepo and enable dependency resolution:
+VMem builds with the current XMake release and does not constrain a minimum XMake version in repository metadata. The repository builds without resolving upstream packages. If dependency resolution is enabled for future work, register VXrepo first:
 
 ```bash
 xrepo add-repo vxrepo <VXREPO_GIT_URL>
@@ -94,7 +95,8 @@ xmake test
 - C++ namespace: `voris::mem`
 - Primary XMake target: `voris_vmem`
 - Language baseline: C++23
+- Version: `0.1.0`
 
 ## Licensing
 
-No license is selected by this scaffold. See [docs/LICENSING.md](docs/LICENSING.md) before publishing or accepting external contributions.
+VMem is licensed under the GNU General Public License version 3 (`GPL-3.0-only`). See [LICENSE](LICENSE) and [docs/LICENSING.md](docs/LICENSING.md). Separate commercial licenses are available by private agreement with the project owner.
