@@ -75,19 +75,12 @@ VMem/
 ## Build VMem
 
 ```bash
-xmake f -m debug --build_tests=y
+xmake f -m debug
 xmake
 xmake test
 ```
 
-VMem builds with the current XMake release and does not constrain a minimum XMake version in repository metadata. The repository builds without resolving upstream packages. If dependency resolution is enabled for future work, register VXrepo first:
-
-```bash
-xrepo add-repo vxrepo <VXREPO_GIT_URL>
-xmake f -m debug --build_tests=y --with_voris_dependencies=y
-xmake
-xmake test
-```
+VMem builds with the current XMake release and does not constrain a minimum XMake version in repository metadata. The repository currently has no internal upstream package dependencies, so normal builds do not require VXrepo registration.
 
 ## Package Identity
 

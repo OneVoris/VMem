@@ -9,30 +9,36 @@
 #include <utility>
 
 #if defined(_MSC_VER)
-#    include <malloc.h>
+#include <malloc.h>
 #endif
 
-namespace voris::mem {
+namespace voris::mem
+{
 
-namespace {
+namespace
+{
 
-void* allocate_aligned(std::size_t size, std::size_t alignment) noexcept {
+void *allocate_aligned(std::size_t size, std::size_t alignment) noexcept
+{
 #if defined(_MSC_VER)
     return _aligned_malloc(size, alignment);
 #else
-    if (alignment <= alignof(std::max_align_t)) {
+    if (alignment <= alignof(std::max_align_t))
+    {
         return std::malloc(size);
     }
 
-    void* pointer{};
-    if (posix_memalign(&pointer, alignment, size) != 0) {
+    void *pointer{};
+    if (posix_memalign(&pointer, alignment, size) != 0)
+    {
         return nullptr;
     }
     return pointer;
 #endif
 }
 
-void deallocate_aligned(void* pointer) noexcept {
+void deallocate_aligned(void *pointer) noexcept
+{
 #if defined(_MSC_VER)
     _aligned_free(pointer);
 #else
@@ -42,48 +48,55 @@ void deallocate_aligned(void* pointer) noexcept {
 
 } // namespace
 
-std::expected<allocation, errc>
-system_resource::allocate(const allocation_request& request) noexcept {
-    if (!is_power_of_two(request.alignment)) {
+std::expected<allocation, errc> system_resource::allocate(const allocation_request &request) noexcept
+{
+    if (!is_power_of_two(request.alignment))
+    {
         failed_allocations_.fetch_add(1, std::memory_order_relaxed);
         return std::unexpected(errc::invalid_alignment);
     }
 
-    if (request.size == 0) {
+    if (request.size == 0)
+    {
         return allocation{nullptr, 0, request.alignment};
     }
 
     const auto checked_size = align_up(request.size, request.alignment);
-    if (!checked_size) {
+    if (!checked_size)
+    {
         failed_allocations_.fetch_add(1, std::memory_order_relaxed);
         return std::unexpected(checked_size.error());
     }
 
-    const auto effective_alignment =
-        request.alignment < alignof(void*) ? alignof(void*) : request.alignment;
-    void* pointer = allocate_aligned(request.size, effective_alignment);
-    if (pointer == nullptr) {
+    const auto effective_alignment = request.alignment < alignof(void *) ? alignof(void *) : request.alignment;
+    void *pointer = allocate_aligned(request.size, effective_alignment);
+    if (pointer == nullptr)
+    {
         failed_allocations_.fetch_add(1, std::memory_order_relaxed);
         return std::unexpected(errc::out_of_memory);
     }
 
-    try {
+    try
+    {
         std::lock_guard lock{active_allocations_mutex_};
-        auto [_, inserted] =
-            active_allocations_.emplace(pointer, allocation{pointer, request.size, request.alignment});
-        if (!inserted) {
+        auto [_, inserted] = active_allocations_.emplace(pointer, allocation{pointer, request.size, request.alignment});
+        if (!inserted)
+        {
             deallocate_aligned(pointer);
             failed_allocations_.fetch_add(1, std::memory_order_relaxed);
             return std::unexpected(errc::out_of_memory);
         }
-    } catch (const std::bad_alloc&) {
+    }
+    catch (const std::bad_alloc &)
+    {
         deallocate_aligned(pointer);
         failed_allocations_.fetch_add(1, std::memory_order_relaxed);
         return std::unexpected(errc::out_of_memory);
     }
 
     auto accounted = detail::checked_atomic_add(active_bytes_, request.size);
-    if (!accounted) {
+    if (!accounted)
+    {
         std::lock_guard lock{active_allocations_mutex_};
         active_allocations_.erase(pointer);
         deallocate_aligned(pointer);
@@ -92,7 +105,8 @@ system_resource::allocate(const allocation_request& request) noexcept {
     }
 
     auto active_count = detail::checked_atomic_add(active_allocation_count_, 1);
-    if (!active_count) {
+    if (!active_count)
+    {
         static_cast<void>(detail::checked_atomic_sub(active_bytes_, request.size));
         std::lock_guard lock{active_allocations_mutex_};
         active_allocations_.erase(pointer);
@@ -102,7 +116,8 @@ system_resource::allocate(const allocation_request& request) noexcept {
     }
 
     auto total_count = detail::checked_atomic_add(total_allocations_, 1);
-    if (!total_count) {
+    if (!total_count)
+    {
         static_cast<void>(detail::checked_atomic_sub(active_allocation_count_, 1));
         static_cast<void>(detail::checked_atomic_sub(active_bytes_, request.size));
         std::lock_guard lock{active_allocations_mutex_};
@@ -114,31 +129,38 @@ system_resource::allocate(const allocation_request& request) noexcept {
     return allocation{pointer, request.size, request.alignment};
 }
 
-std::expected<void, errc> system_resource::deallocate(allocation block) noexcept {
-    if (detail::is_empty_allocation(block)) {
+std::expected<void, errc> system_resource::deallocate(allocation block) noexcept
+{
+    if (detail::is_empty_allocation(block))
+    {
         return {};
     }
-    if (detail::has_invalid_non_empty_shape(block)) {
+    if (detail::has_invalid_non_empty_shape(block))
+    {
         return std::unexpected(errc::wrong_owner);
     }
 
     {
         std::lock_guard lock{active_allocations_mutex_};
         auto found = active_allocations_.find(block.data);
-        if (found == active_allocations_.end()) {
+        if (found == active_allocations_.end())
+        {
             return std::unexpected(errc::wrong_owner);
         }
-        if (found->second.size != block.size || found->second.alignment != block.alignment) {
+        if (found->second.size != block.size || found->second.alignment != block.alignment)
+        {
             return std::unexpected(errc::wrong_owner);
         }
 
         auto active = detail::checked_atomic_sub(active_bytes_, block.size);
-        if (!active) {
+        if (!active)
+        {
             return std::unexpected(active.error());
         }
 
         auto allocations = detail::checked_atomic_sub(active_allocation_count_, 1);
-        if (!allocations) {
+        if (!allocations)
+        {
             static_cast<void>(detail::checked_atomic_add(active_bytes_, block.size));
             return std::unexpected(allocations.error());
         }
@@ -151,7 +173,8 @@ std::expected<void, errc> system_resource::deallocate(allocation block) noexcept
     return {};
 }
 
-resource_traits system_resource::traits() const noexcept {
+resource_traits system_resource::traits() const noexcept
+{
     return resource_traits{
         .name = "system_resource",
         .ownership = resource_ownership::caller_owned,
@@ -160,7 +183,8 @@ resource_traits system_resource::traits() const noexcept {
     };
 }
 
-usage_snapshot system_resource::usage() const noexcept {
+usage_snapshot system_resource::usage() const noexcept
+{
     const auto active_bytes = active_bytes_.load(std::memory_order_relaxed);
     return usage_snapshot{
         .active_bytes = active_bytes,

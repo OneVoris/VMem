@@ -13,78 +13,93 @@
 #include <expected>
 #include <vector>
 
-namespace voris::mem {
+namespace voris::mem
+{
 
-struct fixed_block_pool_options {
+struct fixed_block_pool_options
+{
     std::size_t block_size{64};
     std::size_t block_alignment{alignof(std::max_align_t)};
     std::size_t capacity{1024};
 };
 
-struct fixed_block_allocation {
+struct fixed_block_allocation
+{
     allocation block{};
     std::size_t generation{};
 };
 
-class fixed_block_pool {
-public:
-    explicit fixed_block_pool(resource_ref upstream,
-                              fixed_block_pool_options options = {}) noexcept
-        : upstream_(upstream), options_(options) {}
+class fixed_block_pool
+{
+  public:
+    explicit fixed_block_pool(resource_ref upstream, fixed_block_pool_options options = {}) noexcept
+        : upstream_(upstream), options_(options)
+    {
+    }
 
-    fixed_block_pool(const fixed_block_pool&) = delete;
-    fixed_block_pool& operator=(const fixed_block_pool&) = delete;
+    fixed_block_pool(const fixed_block_pool &) = delete;
+    fixed_block_pool &operator=(const fixed_block_pool &) = delete;
 
-    ~fixed_block_pool() {
-        if (backing_.data != nullptr) {
+    ~fixed_block_pool()
+    {
+        if (backing_.data != nullptr)
+        {
             static_cast<void>(upstream_.deallocate(backing_));
         }
     }
 
-    [[nodiscard]] std::expected<allocation, errc>
-    allocate(const allocation_request& request) noexcept {
+    [[nodiscard]] std::expected<allocation, errc> allocate(const allocation_request &request) noexcept
+    {
         auto block = allocate_block(request);
-        if (!block) {
+        if (!block)
+        {
             return std::unexpected(block.error());
         }
         return block->block;
     }
 
-    [[nodiscard]] std::expected<fixed_block_allocation, errc>
-    allocate_block(const allocation_request& request) noexcept {
-        if (!is_power_of_two(request.alignment) || !is_power_of_two(options_.block_alignment)) {
+    [[nodiscard]] std::expected<fixed_block_allocation, errc> allocate_block(const allocation_request &request) noexcept
+    {
+        if (!is_power_of_two(request.alignment) || !is_power_of_two(options_.block_alignment))
+        {
             failed_allocations_ += 1;
             return std::unexpected(errc::invalid_alignment);
         }
-        if (request.size == 0) {
-            return fixed_block_allocation{.block = allocation{nullptr, 0, request.alignment},
-                                          .generation = 0};
+        if (request.size == 0)
+        {
+            return fixed_block_allocation{.block = allocation{nullptr, 0, request.alignment}, .generation = 0};
         }
-        if (request.size > options_.block_size || request.alignment > options_.block_alignment) {
+        if (request.size > options_.block_size || request.alignment > options_.block_alignment)
+        {
             failed_allocations_ += 1;
             return std::unexpected(errc::out_of_memory);
         }
         auto ready = ensure_initialized();
-        if (!ready) {
+        if (!ready)
+        {
             failed_allocations_ += 1;
             return std::unexpected(ready.error());
         }
-        if (free_indices_.empty()) {
+        if (free_indices_.empty())
+        {
             failed_allocations_ += 1;
             return std::unexpected(errc::out_of_memory);
         }
         auto active = checked_add(active_bytes_, options_.block_size);
-        if (!active) {
+        if (!active)
+        {
             failed_allocations_ += 1;
             return std::unexpected(active.error());
         }
         auto allocations = checked_add(active_allocations_, 1);
-        if (!allocations) {
+        if (!allocations)
+        {
             failed_allocations_ += 1;
             return std::unexpected(allocations.error());
         }
         auto total_allocations = checked_add(total_allocations_, 1);
-        if (!total_allocations) {
+        if (!total_allocations)
+        {
             failed_allocations_ += 1;
             return std::unexpected(total_allocations.error());
         }
@@ -92,7 +107,8 @@ public:
         const auto index = free_indices_.back();
         free_indices_.pop_back();
         auto generation = checked_add(states_[index].generation, 1);
-        if (!generation) {
+        if (!generation)
+        {
             free_indices_.push_back(index);
             failed_allocations_ += 1;
             return std::unexpected(generation.error());
@@ -103,69 +119,81 @@ public:
         active_allocations_ = *allocations;
         total_allocations_ = *total_allocations;
         auto offset = checked_mul(index, stride_);
-        if (!offset) {
+        if (!offset)
+        {
             return std::unexpected(offset.error());
         }
         auto address = checked_add(reinterpret_cast<std::uintptr_t>(backing_.data), *offset);
-        if (!address) {
+        if (!address)
+        {
             return std::unexpected(address.error());
         }
         return fixed_block_allocation{
-            .block = allocation{reinterpret_cast<void*>(*address),
-                                options_.block_size,
-                                options_.block_alignment},
+            .block = allocation{reinterpret_cast<void *>(*address), options_.block_size, options_.block_alignment},
             .generation = *generation,
         };
     }
 
-    [[nodiscard]] std::expected<void, errc> deallocate(allocation block) noexcept {
-        if (detail::is_empty_allocation(block)) {
+    [[nodiscard]] std::expected<void, errc> deallocate(allocation block) noexcept
+    {
+        if (detail::is_empty_allocation(block))
+        {
             return {};
         }
         auto descriptor = descriptor_for_current(block);
-        if (!descriptor) {
+        if (!descriptor)
+        {
             return std::unexpected(descriptor.error());
         }
         return deallocate_block(*descriptor);
     }
 
-    [[nodiscard]] std::expected<void, errc>
-    deallocate_block(fixed_block_allocation descriptor) noexcept {
+    [[nodiscard]] std::expected<void, errc> deallocate_block(fixed_block_allocation descriptor) noexcept
+    {
         const auto block = descriptor.block;
-        if (detail::is_empty_allocation(block)) {
+        if (detail::is_empty_allocation(block))
+        {
             return {};
         }
         if (detail::has_invalid_non_empty_shape(block) || block.size != options_.block_size ||
-            block.alignment != options_.block_alignment || backing_.data == nullptr) {
+            block.alignment != options_.block_alignment || backing_.data == nullptr)
+        {
             return std::unexpected(errc::wrong_owner);
         }
 
         auto index = index_for(block.data);
-        if (!index) {
+        if (!index)
+        {
             return std::unexpected(errc::wrong_owner);
         }
-        auto& state = states_[*index];
-        if (!state.allocated) {
+        auto &state = states_[*index];
+        if (!state.allocated)
+        {
             return std::unexpected(errc::wrong_owner);
         }
-        if (state.generation != descriptor.generation) {
+        if (state.generation != descriptor.generation)
+        {
             return std::unexpected(errc::wrong_owner);
         }
 
         auto active = checked_sub(active_bytes_, options_.block_size);
-        if (!active) {
+        if (!active)
+        {
             return std::unexpected(active.error());
         }
         auto allocations = checked_sub(active_allocations_, 1);
-        if (!allocations) {
+        if (!allocations)
+        {
             return std::unexpected(allocations.error());
         }
         auto total_deallocations = checked_add(total_deallocations_, 1);
-        if (!total_deallocations) {
+        if (!total_deallocations)
+        {
             return std::unexpected(total_deallocations.error());
         }
         auto generation = checked_add(state.generation, 1);
-        if (!generation) {
+        if (!generation)
+        {
             return std::unexpected(generation.error());
         }
         state.allocated = false;
@@ -177,7 +205,8 @@ public:
         return {};
     }
 
-    [[nodiscard]] resource_traits traits() const noexcept {
+    [[nodiscard]] resource_traits traits() const noexcept
+    {
         return resource_traits{
             .name = "fixed_block_pool",
             .ownership = resource_ownership::caller_owned,
@@ -186,7 +215,8 @@ public:
         };
     }
 
-    [[nodiscard]] usage_snapshot usage() const noexcept {
+    [[nodiscard]] usage_snapshot usage() const noexcept
+    {
         return usage_snapshot{
             .active_bytes = active_bytes_,
             .reserved_bytes = backing_.size,
@@ -197,39 +227,50 @@ public:
         };
     }
 
-private:
-    struct block_state {
+  private:
+    struct block_state
+    {
         bool allocated{};
         std::size_t generation{};
     };
 
-    [[nodiscard]] std::expected<void, errc> ensure_initialized() noexcept {
-        if (backing_.data != nullptr) {
+    [[nodiscard]] std::expected<void, errc> ensure_initialized() noexcept
+    {
+        if (backing_.data != nullptr)
+        {
             return {};
         }
-        if (options_.capacity == 0 || options_.block_size == 0) {
+        if (options_.capacity == 0 || options_.block_size == 0)
+        {
             return std::unexpected(errc::out_of_memory);
         }
         auto stride = align_up(options_.block_size, options_.block_alignment);
-        if (!stride) {
+        if (!stride)
+        {
             return std::unexpected(stride.error());
         }
         auto total = checked_mul(*stride, options_.capacity);
-        if (!total) {
+        if (!total)
+        {
             return std::unexpected(total.error());
         }
 
         auto block = upstream_.allocate(*total, options_.block_alignment);
-        if (!block) {
+        if (!block)
+        {
             return std::unexpected(block.error());
         }
-        try {
+        try
+        {
             states_.assign(options_.capacity, block_state{});
             free_indices_.reserve(options_.capacity);
-            for (std::size_t index = 0; index < options_.capacity; ++index) {
+            for (std::size_t index = 0; index < options_.capacity; ++index)
+            {
                 free_indices_.push_back(options_.capacity - index - 1);
             }
-        } catch (...) {
+        }
+        catch (...)
+        {
             static_cast<void>(upstream_.deallocate(*block));
             states_.clear();
             free_indices_.clear();
@@ -240,40 +281,48 @@ private:
         return {};
     }
 
-    [[nodiscard]] std::expected<std::size_t, errc> index_for(void* pointer) const noexcept {
+    [[nodiscard]] std::expected<std::size_t, errc> index_for(void *pointer) const noexcept
+    {
         const auto begin = reinterpret_cast<std::uintptr_t>(backing_.data);
         const auto address = reinterpret_cast<std::uintptr_t>(pointer);
         auto bytes = checked_mul(stride_, options_.capacity);
-        if (!bytes) {
+        if (!bytes)
+        {
             return std::unexpected(bytes.error());
         }
         auto end = checked_add(begin, *bytes);
-        if (!end || address < begin || address >= *end) {
+        if (!end || address < begin || address >= *end)
+        {
             return std::unexpected(errc::wrong_owner);
         }
         auto offset = checked_sub(address, begin);
-        if (!offset || (*offset % stride_) != 0) {
+        if (!offset || (*offset % stride_) != 0)
+        {
             return std::unexpected(errc::wrong_owner);
         }
         auto index = *offset / stride_;
-        if (index >= options_.capacity) {
+        if (index >= options_.capacity)
+        {
             return std::unexpected(errc::wrong_owner);
         }
         return index;
     }
 
-    [[nodiscard]] std::expected<fixed_block_allocation, errc>
-    descriptor_for_current(allocation block) const noexcept {
+    [[nodiscard]] std::expected<fixed_block_allocation, errc> descriptor_for_current(allocation block) const noexcept
+    {
         if (detail::has_invalid_non_empty_shape(block) || block.size != options_.block_size ||
-            block.alignment != options_.block_alignment || backing_.data == nullptr) {
+            block.alignment != options_.block_alignment || backing_.data == nullptr)
+        {
             return std::unexpected(errc::wrong_owner);
         }
         auto index = index_for(block.data);
-        if (!index) {
+        if (!index)
+        {
             return std::unexpected(index.error());
         }
-        const auto& state = states_[*index];
-        if (!state.allocated) {
+        const auto &state = states_[*index];
+        if (!state.allocated)
+        {
             return std::unexpected(errc::wrong_owner);
         }
         return fixed_block_allocation{.block = block, .generation = state.generation};

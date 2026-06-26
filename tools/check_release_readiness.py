@@ -34,9 +34,10 @@ def main() -> int:
     xmake = read_text('xmake.lua')
     require('set_xmakever' not in xmake, 'xmake.lua must not pin a minimum XMake version', errors)
     require(f'set_version("{VERSION}")' in xmake, f'xmake.lua must set version {VERSION}', errors)
-    require('--sanitize=address-undefined' in read_text('.github/workflows/ci.yml'),
+    ci = read_text('.github/workflows/ci.yml')
+    require('xmake f -m debug --policies=build.sanitizer.address,build.sanitizer.undefined' in ci,
             'CI must run an ASan+UBSan configuration', errors)
-    require('--sanitize=thread' in read_text('.github/workflows/ci.yml'),
+    require('xmake f -m debug --policies=build.sanitizer.thread' in ci,
             'CI must run a TSan configuration', errors)
 
     package = tomllib.loads(read_text('voris-package.toml'))

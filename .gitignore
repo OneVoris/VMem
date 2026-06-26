@@ -31,3 +31,4 @@ CLAUDE.local.md
 GEMINI.md
 GEMINI.local.md
 .codex/
+compile_commands.json

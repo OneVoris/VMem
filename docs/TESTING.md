@@ -49,7 +49,7 @@ Release verification, outside normal `xmake test`, includes optional example bui
 
 ## Sanitizer Visibility
 
-ASan+UBSan and TSan runs should include `vmem_m5_debug_observability_test`, `vmem_m5_debug_stress_test`, and `vmem_m5_allocator_corruption_fuzz` where the compiler supports those sanitizers. The explicit probes `vmem_m5_asan_ubsan_visibility_probe` and `vmem_m5_tsan_visibility_probe` are built with `--build_sanitizer_probes=y` and are expected-failure harnesses under instrumented Clang/GCC builds. They exercise VMem resources while intentionally triggering ASan redzone, UBSan signed-overflow, and TSan data-race diagnostics. The debug wrapper preserves ordinary payload memory and does not hide application invalid accesses, undefined behavior, or data races behind a private allocator implementation.
+ASan+UBSan and TSan runs should include `vmem_m5_debug_observability_test`, `vmem_m5_debug_stress_test`, and `vmem_m5_allocator_corruption_fuzz` where the compiler supports those sanitizers. The explicit probes `vmem_m5_asan_ubsan_visibility_probe` and `vmem_m5_tsan_visibility_probe` are built with XMake sanitizer policies and are expected-failure harnesses under instrumented Clang/GCC builds. They exercise VMem resources while intentionally triggering ASan redzone, UBSan signed-overflow, and TSan data-race diagnostics. The debug wrapper preserves ordinary payload memory and does not hide application invalid accesses, undefined behavior, or data races behind a private allocator implementation.
 
 ## Completion Rule
 

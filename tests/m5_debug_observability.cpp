@@ -13,19 +13,23 @@
 #include <memory>
 
 #if defined(NDEBUG)
-#    error "VMem assert-style tests require assertions enabled"
+#error "VMem assert-style tests require assertions enabled"
 #endif
 
-namespace {
+namespace
+{
 
-[[nodiscard]] bool os_page_source_supports_guard_pages() noexcept {
+[[nodiscard]] bool os_page_source_supports_guard_pages() noexcept
+{
     voris::mem::os_page_source pages;
     auto page_size = pages.page_size();
-    if (!page_size) {
+    if (!page_size)
+    {
         return false;
     }
     auto reserved = pages.reserve(*page_size * 3U);
-    if (!reserved) {
+    if (!reserved)
+    {
         return false;
     }
     auto committed = pages.commit(voris::mem::page_span{reserved->data, *page_size});
@@ -33,40 +37,46 @@ namespace {
     return committed && released;
 }
 
-class bump_resource {
-public:
-    [[nodiscard]] std::expected<voris::mem::allocation, voris::mem::errc>
-    allocate(const voris::mem::allocation_request& request) noexcept {
-        if (!voris::mem::is_power_of_two(request.alignment)) {
+class bump_resource
+{
+  public:
+    [[nodiscard]] std::expected<voris::mem::allocation, voris::mem::errc> allocate(
+        const voris::mem::allocation_request &request) noexcept
+    {
+        if (!voris::mem::is_power_of_two(request.alignment))
+        {
             return std::unexpected(voris::mem::errc::invalid_alignment);
         }
         const auto base = reinterpret_cast<std::uintptr_t>(storage_.data()) + cursor_;
         const auto aligned = (base + request.alignment - 1U) & ~(request.alignment - 1U);
         const auto offset = aligned - reinterpret_cast<std::uintptr_t>(storage_.data());
         const auto end = offset + request.size;
-        if (end > storage_.size()) {
+        if (end > storage_.size())
+        {
             return std::unexpected(voris::mem::errc::out_of_memory);
         }
         cursor_ = end;
         ++active_allocations_;
         return voris::mem::allocation{
-            reinterpret_cast<void*>(aligned),
+            reinterpret_cast<void *>(aligned),
             request.size,
             request.alignment,
         };
     }
 
-    [[nodiscard]] std::expected<void, voris::mem::errc>
-    deallocate(voris::mem::allocation block) noexcept {
+    [[nodiscard]] std::expected<void, voris::mem::errc> deallocate(voris::mem::allocation block) noexcept
+    {
         last_deallocated_ = block;
         ++deallocation_count_;
-        if (active_allocations_ > 0U) {
+        if (active_allocations_ > 0U)
+        {
             --active_allocations_;
         }
         return {};
     }
 
-    [[nodiscard]] voris::mem::resource_traits traits() const noexcept {
+    [[nodiscard]] voris::mem::resource_traits traits() const noexcept
+    {
         return voris::mem::resource_traits{
             .name = "bump_resource",
             .ownership = voris::mem::resource_ownership::caller_owned,
@@ -75,19 +85,22 @@ public:
         };
     }
 
-    [[nodiscard]] voris::mem::usage_snapshot usage() const noexcept {
+    [[nodiscard]] voris::mem::usage_snapshot usage() const noexcept
+    {
         return voris::mem::usage_snapshot{.active_allocations = active_allocations_};
     }
 
-    [[nodiscard]] std::size_t deallocation_count() const noexcept {
+    [[nodiscard]] std::size_t deallocation_count() const noexcept
+    {
         return deallocation_count_;
     }
 
-    [[nodiscard]] voris::mem::allocation last_deallocated() const noexcept {
+    [[nodiscard]] voris::mem::allocation last_deallocated() const noexcept
+    {
         return last_deallocated_;
     }
 
-private:
+  private:
     alignas(64) std::array<std::byte, 8192> storage_{};
     std::size_t cursor_{};
     std::size_t active_allocations_{};
@@ -95,27 +108,32 @@ private:
     voris::mem::allocation last_deallocated_{};
 };
 
-class reusable_slot_resource {
-public:
-    [[nodiscard]] std::expected<voris::mem::allocation, voris::mem::errc>
-    allocate(const voris::mem::allocation_request& request) noexcept {
-        if (!voris::mem::is_power_of_two(request.alignment)) {
+class reusable_slot_resource
+{
+  public:
+    [[nodiscard]] std::expected<voris::mem::allocation, voris::mem::errc> allocate(
+        const voris::mem::allocation_request &request) noexcept
+    {
+        if (!voris::mem::is_power_of_two(request.alignment))
+        {
             return std::unexpected(voris::mem::errc::invalid_alignment);
         }
-        if (allocated_ || request.size > storage_.size() || request.alignment > 64U) {
+        if (allocated_ || request.size > storage_.size() || request.alignment > 64U)
+        {
             return std::unexpected(voris::mem::errc::out_of_memory);
         }
         allocated_ = true;
         return voris::mem::allocation{storage_.data(), request.size, request.alignment};
     }
 
-    [[nodiscard]] std::expected<void, voris::mem::errc>
-    deallocate(voris::mem::allocation) noexcept {
+    [[nodiscard]] std::expected<void, voris::mem::errc> deallocate(voris::mem::allocation) noexcept
+    {
         allocated_ = false;
         return {};
     }
 
-    [[nodiscard]] voris::mem::resource_traits traits() const noexcept {
+    [[nodiscard]] voris::mem::resource_traits traits() const noexcept
+    {
         return voris::mem::resource_traits{
             .name = "reusable_slot_resource",
             .ownership = voris::mem::resource_ownership::caller_owned,
@@ -124,37 +142,43 @@ public:
         };
     }
 
-    [[nodiscard]] voris::mem::usage_snapshot usage() const noexcept {
+    [[nodiscard]] voris::mem::usage_snapshot usage() const noexcept
+    {
         return voris::mem::usage_snapshot{.active_allocations = allocated_ ? 1U : 0U};
     }
 
-private:
+  private:
     alignas(64) std::array<std::byte, 2048> storage_{};
     bool allocated_{};
 };
 
-class failing_deallocate_resource {
-public:
-    void fail_next_deallocate(bool enabled) noexcept {
+class failing_deallocate_resource
+{
+  public:
+    void fail_next_deallocate(bool enabled) noexcept
+    {
         fail_deallocate_ = enabled;
     }
 
-    [[nodiscard]] std::expected<voris::mem::allocation, voris::mem::errc>
-    allocate(const voris::mem::allocation_request& request) noexcept {
+    [[nodiscard]] std::expected<voris::mem::allocation, voris::mem::errc> allocate(
+        const voris::mem::allocation_request &request) noexcept
+    {
         return system_.allocate(request);
     }
 
-    [[nodiscard]] std::expected<void, voris::mem::errc>
-    deallocate(voris::mem::allocation block) noexcept {
+    [[nodiscard]] std::expected<void, voris::mem::errc> deallocate(voris::mem::allocation block) noexcept
+    {
         ++deallocation_attempts_;
-        if (fail_deallocate_) {
+        if (fail_deallocate_)
+        {
             fail_deallocate_ = false;
             return std::unexpected(voris::mem::errc::wrong_owner);
         }
         return system_.deallocate(block);
     }
 
-    [[nodiscard]] voris::mem::resource_traits traits() const noexcept {
+    [[nodiscard]] voris::mem::resource_traits traits() const noexcept
+    {
         return voris::mem::resource_traits{
             .name = "failing_deallocate_resource",
             .ownership = voris::mem::resource_ownership::caller_owned,
@@ -163,21 +187,24 @@ public:
         };
     }
 
-    [[nodiscard]] voris::mem::usage_snapshot usage() const noexcept {
+    [[nodiscard]] voris::mem::usage_snapshot usage() const noexcept
+    {
         return system_.usage();
     }
 
-    [[nodiscard]] std::size_t deallocation_attempts() const noexcept {
+    [[nodiscard]] std::size_t deallocation_attempts() const noexcept
+    {
         return deallocation_attempts_;
     }
 
-private:
+  private:
     voris::mem::system_resource system_;
     bool fail_deallocate_{};
     std::size_t deallocation_attempts_{};
 };
 
-void test_debug_resource_poisons_payload_and_checks_redzones() {
+void test_debug_resource_poisons_payload_and_checks_redzones()
+{
     bump_resource upstream;
     voris::mem::debug_resource debug{
         voris::mem::resource_ref{upstream},
@@ -194,10 +221,8 @@ void test_debug_resource_poisons_payload_and_checks_redzones() {
 
     auto block = debug.allocate(voris::mem::make_allocation_request(32U, 16U));
     assert(block);
-    auto* payload = static_cast<std::byte*>(block->data);
-    assert(std::all_of(payload, payload + block->size, [](std::byte byte) {
-        return byte == std::byte{0xA5};
-    }));
+    auto *payload = static_cast<std::byte *>(block->data);
+    assert(std::all_of(payload, payload + block->size, [](std::byte byte) { return byte == std::byte{0xA5}; }));
 
     payload[block->size] = std::byte{0x00};
     auto corrupted = debug.deallocate(*block);
@@ -207,15 +232,15 @@ void test_debug_resource_poisons_payload_and_checks_redzones() {
 
     auto clean = debug.allocate(voris::mem::make_allocation_request(24U, 8U));
     assert(clean);
-    auto* clean_payload = static_cast<std::byte*>(clean->data);
+    auto *clean_payload = static_cast<std::byte *>(clean->data);
     assert(debug.deallocate(*clean));
-    assert(std::all_of(clean_payload, clean_payload + clean->size, [](std::byte byte) {
-        return byte == std::byte{0x5A};
-    }));
+    assert(std::all_of(clean_payload, clean_payload + clean->size,
+                       [](std::byte byte) { return byte == std::byte{0x5A}; }));
     assert(upstream.deallocation_count() == 1U);
 }
 
-void test_failed_upstream_release_preserves_debug_allocation_state() {
+void test_failed_upstream_release_preserves_debug_allocation_state()
+{
     failing_deallocate_resource upstream;
     voris::mem::debug_resource debug{
         voris::mem::resource_ref{upstream},
@@ -229,7 +254,7 @@ void test_failed_upstream_release_preserves_debug_allocation_state() {
 
     auto block = debug.allocate(voris::mem::make_allocation_request(32U, 16U));
     assert(block);
-    auto* payload = static_cast<std::byte*>(block->data);
+    auto *payload = static_cast<std::byte *>(block->data);
     std::fill_n(payload, block->size, std::byte{0x11});
 
     upstream.fail_next_deallocate(true);
@@ -238,9 +263,7 @@ void test_failed_upstream_release_preserves_debug_allocation_state() {
     assert(failed.error() == voris::mem::errc::wrong_owner);
     assert(debug.usage().active_allocations == 1U);
     assert(debug.leak_snapshot().records.size() == 1U);
-    assert(std::all_of(payload, payload + block->size, [](std::byte byte) {
-        return byte == std::byte{0x11};
-    }));
+    assert(std::all_of(payload, payload + block->size, [](std::byte byte) { return byte == std::byte{0x11}; }));
 
     payload[0] = std::byte{0x22};
     assert(debug.deallocate(*block));
@@ -248,7 +271,8 @@ void test_failed_upstream_release_preserves_debug_allocation_state() {
     assert(upstream.deallocation_attempts() == 2U);
 }
 
-void test_debug_resource_detects_double_free_wrong_resource_and_wrong_generation() {
+void test_debug_resource_detects_double_free_wrong_resource_and_wrong_generation()
+{
     voris::mem::system_resource system;
     voris::mem::debug_resource first{voris::mem::resource_ref{system}};
     voris::mem::debug_resource second{voris::mem::resource_ref{system}};
@@ -282,7 +306,8 @@ void test_debug_resource_detects_double_free_wrong_resource_and_wrong_generation
     assert(generation_debug.deallocate_block(*current));
 }
 
-void test_guard_page_requests_have_explicit_fallback_accounting() {
+void test_guard_page_requests_have_explicit_fallback_accounting()
+{
     voris::mem::system_resource system;
     voris::mem::debug_resource debug{
         voris::mem::resource_ref{system},
@@ -297,17 +322,21 @@ void test_guard_page_requests_have_explicit_fallback_accounting() {
     assert(block);
     auto snapshot = debug.debug_snapshot();
     assert(snapshot.guard_page_request_count == 1U);
-    if (os_page_source_supports_guard_pages()) {
+    if (os_page_source_supports_guard_pages())
+    {
         assert(snapshot.guard_page_allocation_count == 1U);
         assert(snapshot.guard_page_fallback_count == 0U);
-    } else {
+    }
+    else
+    {
         assert(snapshot.guard_page_allocation_count == 0U);
         assert(snapshot.guard_page_fallback_count == 1U);
     }
     assert(debug.deallocate(*block));
 }
 
-void test_leak_snapshots_diff_without_process_exit_hook() {
+void test_leak_snapshots_diff_without_process_exit_hook()
+{
     voris::mem::system_resource system;
     voris::mem::debug_resource debug{voris::mem::resource_ref{system}};
 
@@ -332,7 +361,8 @@ void test_leak_snapshots_diff_without_process_exit_hook() {
     assert(debug.leak_snapshot().records.empty());
 }
 
-void test_slab_size_class_snapshots_report_active_free_remote_and_fragmentation() {
+void test_slab_size_class_snapshots_report_active_free_remote_and_fragmentation()
+{
     voris::mem::system_resource system;
     voris::mem::slab_resource slab{
         voris::mem::resource_ref{system},
@@ -342,9 +372,8 @@ void test_slab_size_class_snapshots_report_active_free_remote_and_fragmentation(
     auto block = slab.allocate(voris::mem::make_allocation_request(17U, 8U));
     assert(block);
     auto snapshots = slab.size_class_snapshots();
-    auto class32 = std::find_if(snapshots.begin(), snapshots.end(), [](const auto& snapshot) {
-        return snapshot.block_size == 32U;
-    });
+    auto class32 = std::find_if(snapshots.begin(), snapshots.end(),
+                                [](const auto &snapshot) { return snapshot.block_size == 32U; });
     assert(class32 != snapshots.end());
     assert(class32->active_count == 1U);
     assert(class32->free_count > 0U);
@@ -353,9 +382,8 @@ void test_slab_size_class_snapshots_report_active_free_remote_and_fragmentation(
 
     assert(slab.remote_deallocate(*block));
     snapshots = slab.size_class_snapshots();
-    class32 = std::find_if(snapshots.begin(), snapshots.end(), [](const auto& snapshot) {
-        return snapshot.block_size == 32U;
-    });
+    class32 = std::find_if(snapshots.begin(), snapshots.end(),
+                           [](const auto &snapshot) { return snapshot.block_size == 32U; });
     assert(class32 != snapshots.end());
     assert(class32->remote_count == 1U);
     assert(class32->active_count == 0U);
@@ -363,9 +391,8 @@ void test_slab_size_class_snapshots_report_active_free_remote_and_fragmentation(
 
     assert(slab.drain_remote_frees() == 1U);
     snapshots = slab.size_class_snapshots();
-    class32 = std::find_if(snapshots.begin(), snapshots.end(), [](const auto& snapshot) {
-        return snapshot.block_size == 32U;
-    });
+    class32 = std::find_if(snapshots.begin(), snapshots.end(),
+                           [](const auto &snapshot) { return snapshot.block_size == 32U; });
     assert(class32 != snapshots.end());
     assert(class32->active_count == 0U);
     assert(class32->remote_count == 0U);
@@ -373,7 +400,8 @@ void test_slab_size_class_snapshots_report_active_free_remote_and_fragmentation(
 
 } // namespace
 
-int main() {
+int main()
+{
     test_debug_resource_poisons_payload_and_checks_redzones();
     test_failed_upstream_release_preserves_debug_allocation_state();
     test_debug_resource_detects_double_free_wrong_resource_and_wrong_generation();

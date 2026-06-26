@@ -2,9 +2,11 @@
 
 #include <string_view>
 
-namespace voris::mem {
+namespace voris::mem
+{
 
-enum class errc {
+enum class errc
+{
     out_of_memory = 1,
     invalid_alignment = 2,
     size_overflow = 3,
@@ -13,8 +15,10 @@ enum class errc {
     unsupported_platform = 6,
 };
 
-[[nodiscard]] constexpr std::string_view to_string(errc code) noexcept {
-    switch (code) {
+[[nodiscard]] constexpr std::string_view to_string(errc code) noexcept
+{
+    switch (code)
+    {
     case errc::out_of_memory:
         return "out_of_memory";
     case errc::invalid_alignment:

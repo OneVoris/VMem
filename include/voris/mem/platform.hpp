@@ -2,9 +2,11 @@
 
 #include <cstddef>
 
-namespace voris::mem {
+namespace voris::mem
+{
 
-enum class cpu_architecture {
+enum class cpu_architecture
+{
     x86_64,
     arm64,
     unknown,

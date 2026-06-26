@@ -7,44 +7,48 @@
 
 #undef NDEBUG
 
-#include <cassert>
 #include <array>
+#include <atomic>
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <expected>
 #include <limits>
 #include <memory_resource>
 #include <mutex>
-#include <atomic>
 #include <thread>
 #include <vector>
 
 #if defined(NDEBUG)
-#    error "VMem assert-style tests require assertions enabled"
+#error "VMem assert-style tests require assertions enabled"
 #endif
 
-namespace {
+namespace
+{
 
-class oversized_slab_upstream {
-public:
-    [[nodiscard]] std::expected<voris::mem::allocation, voris::mem::errc>
-    allocate(const voris::mem::allocation_request& request) noexcept {
+class oversized_slab_upstream
+{
+  public:
+    [[nodiscard]] std::expected<voris::mem::allocation, voris::mem::errc> allocate(
+        const voris::mem::allocation_request &request) noexcept
+    {
         const auto index = allocation_calls_.fetch_add(1, std::memory_order_relaxed);
-        if (index >= storage_.size()) {
+        if (index >= storage_.size())
+        {
             return std::unexpected(voris::mem::errc::out_of_memory);
         }
-        const auto reported_size =
-            index == 0 ? std::numeric_limits<std::size_t>::max() : request.size;
+        const auto reported_size = index == 0 ? std::numeric_limits<std::size_t>::max() : request.size;
         return voris::mem::allocation{storage_[index].data(), reported_size, request.alignment};
     }
 
-    [[nodiscard]] std::expected<void, voris::mem::errc>
-    deallocate(voris::mem::allocation) noexcept {
+    [[nodiscard]] std::expected<void, voris::mem::errc> deallocate(voris::mem::allocation) noexcept
+    {
         deallocation_calls_.fetch_add(1, std::memory_order_relaxed);
         return {};
     }
 
-    [[nodiscard]] voris::mem::resource_traits traits() const noexcept {
+    [[nodiscard]] voris::mem::resource_traits traits() const noexcept
+    {
         return voris::mem::resource_traits{
             .name = "oversized_slab_upstream",
             .ownership = voris::mem::resource_ownership::caller_owned,
@@ -53,56 +57,67 @@ public:
         };
     }
 
-    [[nodiscard]] voris::mem::usage_snapshot usage() const noexcept {
+    [[nodiscard]] voris::mem::usage_snapshot usage() const noexcept
+    {
         return {};
     }
 
-    [[nodiscard]] std::size_t allocation_calls() const noexcept {
+    [[nodiscard]] std::size_t allocation_calls() const noexcept
+    {
         return allocation_calls_.load(std::memory_order_relaxed);
     }
 
-    [[nodiscard]] std::size_t deallocation_calls() const noexcept {
+    [[nodiscard]] std::size_t deallocation_calls() const noexcept
+    {
         return deallocation_calls_.load(std::memory_order_relaxed);
     }
 
-private:
+  private:
     std::array<std::array<std::byte, 4096>, 4> storage_{};
     std::atomic<std::size_t> allocation_calls_{};
     std::atomic<std::size_t> deallocation_calls_{};
 };
 
-class detecting_pmr_resource final : public std::pmr::memory_resource {
-public:
-    [[nodiscard]] bool observed_concurrent_call() const noexcept {
+class detecting_pmr_resource final : public std::pmr::memory_resource
+{
+  public:
+    [[nodiscard]] bool observed_concurrent_call() const noexcept
+    {
         return observed_concurrent_call_.load(std::memory_order_relaxed);
     }
 
-private:
-    [[nodiscard]] void* do_allocate(std::size_t bytes, std::size_t alignment) override {
+  private:
+    [[nodiscard]] void *do_allocate(std::size_t bytes, std::size_t alignment) override
+    {
         enter();
-        auto* pointer = std::pmr::new_delete_resource()->allocate(bytes, alignment);
+        auto *pointer = std::pmr::new_delete_resource()->allocate(bytes, alignment);
         leave();
         return pointer;
     }
 
-    void do_deallocate(void* pointer, std::size_t bytes, std::size_t alignment) override {
+    void do_deallocate(void *pointer, std::size_t bytes, std::size_t alignment) override
+    {
         enter();
         std::pmr::new_delete_resource()->deallocate(pointer, bytes, alignment);
         leave();
     }
 
-    [[nodiscard]] bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
+    [[nodiscard]] bool do_is_equal(const std::pmr::memory_resource &other) const noexcept override
+    {
         return this == &other;
     }
 
-    void enter() noexcept {
-        if (inside_.fetch_add(1, std::memory_order_acq_rel) != 0) {
+    void enter() noexcept
+    {
+        if (inside_.fetch_add(1, std::memory_order_acq_rel) != 0)
+        {
             observed_concurrent_call_.store(true, std::memory_order_release);
         }
         std::this_thread::yield();
     }
 
-    void leave() noexcept {
+    void leave() noexcept
+    {
         inside_.fetch_sub(1, std::memory_order_acq_rel);
     }
 
@@ -110,25 +125,31 @@ private:
     std::atomic<bool> observed_concurrent_call_{};
 };
 
-class throwing_deallocate_pmr_resource final : public std::pmr::memory_resource {
-public:
-    void fail_deallocate(bool enabled) noexcept {
+class throwing_deallocate_pmr_resource final : public std::pmr::memory_resource
+{
+  public:
+    void fail_deallocate(bool enabled) noexcept
+    {
         fail_deallocate_.store(enabled, std::memory_order_relaxed);
     }
 
-private:
-    [[nodiscard]] void* do_allocate(std::size_t bytes, std::size_t alignment) override {
+  private:
+    [[nodiscard]] void *do_allocate(std::size_t bytes, std::size_t alignment) override
+    {
         return std::pmr::new_delete_resource()->allocate(bytes, alignment);
     }
 
-    void do_deallocate(void* pointer, std::size_t bytes, std::size_t alignment) override {
-        if (fail_deallocate_.load(std::memory_order_relaxed)) {
+    void do_deallocate(void *pointer, std::size_t bytes, std::size_t alignment) override
+    {
+        if (fail_deallocate_.load(std::memory_order_relaxed))
+        {
             throw std::bad_alloc{};
         }
         std::pmr::new_delete_resource()->deallocate(pointer, bytes, alignment);
     }
 
-    [[nodiscard]] bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
+    [[nodiscard]] bool do_is_equal(const std::pmr::memory_resource &other) const noexcept override
+    {
         return this == &other;
     }
 
@@ -137,7 +158,8 @@ private:
 
 } // namespace
 
-int main() {
+int main()
+{
     using voris::mem::allocation;
     using voris::mem::arena_options;
     using voris::mem::arena_resource;
@@ -173,8 +195,7 @@ int main() {
     assert(arena_zero);
     assert(arena_zero->data == nullptr);
     assert(!arena.allocate(make_allocation_request(8, 3)));
-    auto arena_huge =
-        arena.allocate(make_allocation_request(std::numeric_limits<std::size_t>::max(), 2));
+    auto arena_huge = arena.allocate(make_allocation_request(std::numeric_limits<std::size_t>::max(), 2));
     assert(!arena_huge);
     assert(arena_huge.error() == errc::size_overflow);
     arena.reset();
@@ -328,7 +349,8 @@ int main() {
     constexpr std::size_t producer_count = 4;
     constexpr std::size_t blocks_per_producer = 32;
     threaded_blocks.reserve(producer_count * blocks_per_producer);
-    for (std::size_t i = 0; i < producer_count * blocks_per_producer; ++i) {
+    for (std::size_t i = 0; i < producer_count * blocks_per_producer; ++i)
+    {
         auto block = threaded_slab.allocate_block(make_allocation_request(24, 8));
         assert(block);
         threaded_blocks.push_back(*block);
@@ -338,11 +360,14 @@ int main() {
     std::atomic<std::size_t> valid_remote_releases{};
     std::vector<std::thread> producers;
     producers.reserve(producer_count);
-    for (std::size_t producer = 0; producer < producer_count; ++producer) {
+    for (std::size_t producer = 0; producer < producer_count; ++producer)
+    {
         producers.emplace_back([&] {
-            for (;;) {
+            for (;;)
+            {
                 const auto index = next_remote_index.fetch_add(1, std::memory_order_relaxed);
-                if (index >= threaded_blocks.size()) {
+                if (index >= threaded_blocks.size())
+                {
                     break;
                 }
                 auto released = threaded_slab.remote_deallocate(threaded_blocks[index].block);
@@ -352,22 +377,26 @@ int main() {
         });
     }
     std::thread drainer{[&] {
-        while (!producers_done.load(std::memory_order_acquire)) {
+        while (!producers_done.load(std::memory_order_acquire))
+        {
             static_cast<void>(threaded_slab.drain_remote_frees());
             auto local = threaded_slab.allocate_block(make_allocation_request(24, 8));
-            if (local) {
+            if (local)
+            {
                 assert(threaded_slab.deallocate_block(*local));
             }
             std::this_thread::yield();
         }
         static_cast<void>(threaded_slab.drain_remote_frees());
     }};
-    for (auto& producer : producers) {
+    for (auto &producer : producers)
+    {
         producer.join();
     }
     producers_done.store(true, std::memory_order_release);
     drainer.join();
-    while (threaded_slab.drain_remote_frees() != 0) {
+    while (threaded_slab.drain_remote_frees() != 0)
+    {
     }
     auto threaded_remote = threaded_slab.remote_usage();
     assert(valid_remote_releases.load(std::memory_order_relaxed) == threaded_blocks.size());
@@ -394,7 +423,7 @@ int main() {
     t2.join();
 
     pmr_memory_resource pmr_vmem{resource_ref{system}};
-    void* pmr_block = pmr_vmem.allocate(48, 32);
+    void *pmr_block = pmr_vmem.allocate(48, 32);
     assert(reinterpret_cast<std::uintptr_t>(pmr_block) % 32 == 0);
     pmr_vmem.deallocate(pmr_block, 48, 32);
 
@@ -405,16 +434,19 @@ int main() {
     assert(reinterpret_cast<std::uintptr_t>(adapted->data) % 32 == 0);
     assert(from_pmr.deallocate(*adapted));
     std::vector<std::thread> pmr_threads;
-    for (std::size_t index = 0; index < 4; ++index) {
+    for (std::size_t index = 0; index < 4; ++index)
+    {
         pmr_threads.emplace_back([&] {
-            for (std::size_t i = 0; i < 128; ++i) {
+            for (std::size_t i = 0; i < 128; ++i)
+            {
                 auto block = from_pmr.allocate(make_allocation_request(32, 16));
                 assert(block);
                 assert(from_pmr.deallocate(*block));
             }
         });
     }
-    for (auto& thread : pmr_threads) {
+    for (auto &thread : pmr_threads)
+    {
         thread.join();
     }
     assert(from_pmr.usage().active_allocations == 0);
@@ -422,9 +454,11 @@ int main() {
     detecting_pmr_resource detecting_pmr;
     pmr_resource_adapter serialized_pmr{&detecting_pmr};
     std::vector<std::thread> serialized_threads;
-    for (std::size_t index = 0; index < 4; ++index) {
+    for (std::size_t index = 0; index < 4; ++index)
+    {
         serialized_threads.emplace_back([&] {
-            for (std::size_t i = 0; i < 128; ++i) {
+            for (std::size_t i = 0; i < 128; ++i)
+            {
                 auto block = serialized_pmr.allocate(make_allocation_request(32, 16));
                 assert(block);
                 assert(serialized_pmr.deallocate(*block));
@@ -434,7 +468,8 @@ int main() {
             }
         });
     }
-    for (auto& thread : serialized_threads) {
+    for (auto &thread : serialized_threads)
+    {
         thread.join();
     }
     assert(!detecting_pmr.observed_concurrent_call());

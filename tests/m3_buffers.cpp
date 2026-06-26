@@ -26,32 +26,40 @@
 #include <vector>
 
 #if defined(NDEBUG)
-#    error "VMem assert-style tests require assertions enabled"
+#error "VMem assert-style tests require assertions enabled"
 #endif
 
-namespace {
+namespace
+{
 
-class recording_resource {
-public:
-    explicit recording_resource(voris::mem::resource_thread_safety thread_safety =
-                                    voris::mem::resource_thread_safety::thread_safe,
-                                bool supports_remote_deallocate = true) noexcept
-        : thread_safety_(thread_safety),
-          supports_remote_deallocate_(supports_remote_deallocate) {}
+class recording_resource
+{
+  public:
+    explicit recording_resource(
+        voris::mem::resource_thread_safety thread_safety = voris::mem::resource_thread_safety::thread_safe,
+        bool supports_remote_deallocate = true) noexcept
+        : thread_safety_(thread_safety), supports_remote_deallocate_(supports_remote_deallocate)
+    {
+    }
 
-    [[nodiscard]] std::expected<voris::mem::allocation, voris::mem::errc>
-    allocate(const voris::mem::allocation_request& request) noexcept {
-        if ((request.alignment == 0U) ||
-            ((request.alignment & (request.alignment - 1U)) != 0U)) {
+    [[nodiscard]] std::expected<voris::mem::allocation, voris::mem::errc> allocate(
+        const voris::mem::allocation_request &request) noexcept
+    {
+        if ((request.alignment == 0U) || ((request.alignment & (request.alignment - 1U)) != 0U))
+        {
             return std::unexpected(voris::mem::errc::invalid_alignment);
         }
-        if (request.size == 0U) {
+        if (request.size == 0U)
+        {
             return voris::mem::allocation{nullptr, 0U, request.alignment};
         }
-        void* pointer{};
-        try {
+        void *pointer{};
+        try
+        {
             pointer = ::operator new(request.size, std::align_val_t{request.alignment});
-        } catch (...) {
+        }
+        catch (...)
+        {
             return std::unexpected(voris::mem::errc::out_of_memory);
         }
         std::lock_guard guard{mutex_};
@@ -60,20 +68,22 @@ public:
         return active_.back();
     }
 
-    [[nodiscard]] std::expected<void, voris::mem::errc>
-    deallocate(voris::mem::allocation block) noexcept {
-        if (block.data == nullptr && block.size == 0U) {
+    [[nodiscard]] std::expected<void, voris::mem::errc> deallocate(voris::mem::allocation block) noexcept
+    {
+        if (block.data == nullptr && block.size == 0U)
+        {
             return {};
         }
         std::lock_guard guard{mutex_};
-        if (fail_deallocate_) {
+        if (fail_deallocate_)
+        {
             return std::unexpected(voris::mem::errc::wrong_owner);
         }
-        const auto found = std::find_if(active_.begin(), active_.end(), [&](const auto& item) {
-            return item.data == block.data && item.size == block.size &&
-                   item.alignment == block.alignment;
+        const auto found = std::find_if(active_.begin(), active_.end(), [&](const auto &item) {
+            return item.data == block.data && item.size == block.size && item.alignment == block.alignment;
         });
-        if (found == active_.end()) {
+        if (found == active_.end())
+        {
             return std::unexpected(voris::mem::errc::wrong_owner);
         }
         ::operator delete(block.data, std::align_val_t{block.alignment});
@@ -83,8 +93,8 @@ public:
         return {};
     }
 
-    [[nodiscard]] std::expected<void, voris::mem::errc>
-    remote_deallocate(voris::mem::allocation block) noexcept {
+    [[nodiscard]] std::expected<void, voris::mem::errc> remote_deallocate(voris::mem::allocation block) noexcept
+    {
         {
             std::lock_guard guard{mutex_};
             ++remote_deallocation_calls_;
@@ -92,7 +102,8 @@ public:
         return deallocate(block);
     }
 
-    [[nodiscard]] voris::mem::resource_traits traits() const noexcept {
+    [[nodiscard]] voris::mem::resource_traits traits() const noexcept
+    {
         return voris::mem::resource_traits{
             .name = "recording_resource",
             .ownership = voris::mem::resource_ownership::caller_owned,
@@ -101,10 +112,12 @@ public:
         };
     }
 
-    [[nodiscard]] voris::mem::usage_snapshot usage() const noexcept {
+    [[nodiscard]] voris::mem::usage_snapshot usage() const noexcept
+    {
         std::lock_guard guard{mutex_};
         std::size_t bytes{};
-        for (const auto& block : active_) {
+        for (const auto &block : active_)
+        {
             bytes += block.size;
         }
         return voris::mem::usage_snapshot{
@@ -116,42 +129,49 @@ public:
         };
     }
 
-    [[nodiscard]] std::size_t deallocation_calls() const noexcept {
+    [[nodiscard]] std::size_t deallocation_calls() const noexcept
+    {
         std::lock_guard guard{mutex_};
         return deallocation_calls_;
     }
 
-    [[nodiscard]] std::size_t remote_deallocation_calls() const noexcept {
+    [[nodiscard]] std::size_t remote_deallocation_calls() const noexcept
+    {
         std::lock_guard guard{mutex_};
         return remote_deallocation_calls_;
     }
 
-    [[nodiscard]] std::size_t active_allocations() const noexcept {
+    [[nodiscard]] std::size_t active_allocations() const noexcept
+    {
         std::lock_guard guard{mutex_};
         return active_.size();
     }
 
-    [[nodiscard]] std::thread::id last_deallocate_thread() const noexcept {
+    [[nodiscard]] std::thread::id last_deallocate_thread() const noexcept
+    {
         std::lock_guard guard{mutex_};
         return last_deallocate_thread_;
     }
 
-    void fail_deallocate(bool enabled) noexcept {
+    void fail_deallocate(bool enabled) noexcept
+    {
         std::lock_guard guard{mutex_};
         fail_deallocate_ = enabled;
     }
 
-    void release_all_for_test() noexcept {
+    void release_all_for_test() noexcept
+    {
         std::lock_guard guard{mutex_};
         fail_deallocate_ = false;
-        for (const auto& block : active_) {
+        for (const auto &block : active_)
+        {
             ::operator delete(block.data, std::align_val_t{block.alignment});
             ++deallocation_calls_;
         }
         active_.clear();
     }
 
-private:
+  private:
     voris::mem::resource_thread_safety thread_safety_{};
     bool supports_remote_deallocate_{};
     mutable std::mutex mutex_{};
@@ -163,37 +183,38 @@ private:
     bool fail_deallocate_{};
 };
 
-[[nodiscard]] voris::mem::const_buffer literal_buffer(const char* text) noexcept {
+[[nodiscard]] voris::mem::const_buffer literal_buffer(const char *text) noexcept
+{
     return voris::mem::const_buffer{
-        reinterpret_cast<const std::byte*>(text),
+        reinterpret_cast<const std::byte *>(text),
         std::char_traits<char>::length(text),
     };
 }
 
-[[nodiscard]] voris::mem::unique_buffer
-make_test_unique(recording_resource& backend, char fill, std::size_t size = 4U) {
-    auto buffer = voris::mem::make_unique_buffer(
-        voris::mem::resource_ref{backend}, size, 8U, voris::mem::memory_tag{"m3.test.unique"});
+[[nodiscard]] voris::mem::unique_buffer make_test_unique(recording_resource &backend, char fill, std::size_t size = 4U)
+{
+    auto buffer = voris::mem::make_unique_buffer(voris::mem::resource_ref{backend}, size, 8U,
+                                                 voris::mem::memory_tag{"m3.test.unique"});
     assert(buffer);
     assert(buffer->resize(size));
     std::memset(buffer->data(), fill, size);
     return std::move(*buffer);
 }
 
-[[nodiscard]] voris::mem::shared_buffer
-make_test_shared(recording_resource& backend, char fill, std::size_t size = 4U) {
-    auto buffer = voris::mem::make_shared_buffer(
-        voris::mem::resource_ref{backend}, size, 8U, voris::mem::memory_tag{"m3.test.shared"});
+[[nodiscard]] voris::mem::shared_buffer make_test_shared(recording_resource &backend, char fill, std::size_t size = 4U)
+{
+    auto buffer = voris::mem::make_shared_buffer(voris::mem::resource_ref{backend}, size, 8U,
+                                                 voris::mem::memory_tag{"m3.test.shared"});
     assert(buffer);
     assert(buffer->resize(size));
     std::memset(buffer->data(), fill, size);
     return std::move(*buffer);
 }
 
-void test_buffer_views() {
+void test_buffer_views()
+{
     std::array<std::byte, 6> bytes{
-        std::byte{'a'}, std::byte{'b'}, std::byte{'c'},
-        std::byte{'d'}, std::byte{'e'}, std::byte{'f'},
+        std::byte{'a'}, std::byte{'b'}, std::byte{'c'}, std::byte{'d'}, std::byte{'e'}, std::byte{'f'},
     };
     voris::mem::mutable_buffer mutable_view{bytes.data(), bytes.size()};
     auto middle = mutable_view.slice(2U, 3U);
@@ -211,10 +232,11 @@ void test_buffer_views() {
     assert(!const_view.slice(std::numeric_limits<std::size_t>::max(), 1U));
 }
 
-void test_unique_buffer() {
+void test_unique_buffer()
+{
     recording_resource backend;
-    auto made = voris::mem::make_unique_buffer(
-        voris::mem::resource_ref{backend}, 32U, 16U, voris::mem::memory_tag{"m3.unique"});
+    auto made = voris::mem::make_unique_buffer(voris::mem::resource_ref{backend}, 32U, 16U,
+                                               voris::mem::memory_tag{"m3.unique"});
     assert(made);
     assert(made->capacity() == 32U);
     assert(made->size() == 0U);
@@ -233,22 +255,16 @@ void test_unique_buffer() {
 
     recording_resource assignment_old_backend;
     recording_resource assignment_new_backend;
-    auto assignment_old = voris::mem::make_unique_buffer(
-        voris::mem::resource_ref{assignment_old_backend},
-        8U,
-        8U,
-        voris::mem::memory_tag{"m3.unique.assign.old"});
-    auto assignment_new = voris::mem::make_unique_buffer(
-        voris::mem::resource_ref{assignment_new_backend},
-        8U,
-        8U,
-        voris::mem::memory_tag{"m3.unique.assign.new"});
+    auto assignment_old = voris::mem::make_unique_buffer(voris::mem::resource_ref{assignment_old_backend}, 8U, 8U,
+                                                         voris::mem::memory_tag{"m3.unique.assign.old"});
+    auto assignment_new = voris::mem::make_unique_buffer(voris::mem::resource_ref{assignment_new_backend}, 8U, 8U,
+                                                         voris::mem::memory_tag{"m3.unique.assign.new"});
     assert(assignment_old);
     assert(assignment_new);
     assert(assignment_old->resize(3U));
     assert(assignment_new->resize(5U));
-    auto* old_data = assignment_old->data();
-    auto* new_data = assignment_new->data();
+    auto *old_data = assignment_old->data();
+    auto *new_data = assignment_new->data();
     assignment_old_backend.fail_deallocate(true);
     *assignment_old = std::move(*assignment_new);
     assert(assignment_old->data() == old_data);
@@ -261,20 +277,18 @@ void test_unique_buffer() {
     assert(assignment_old->reset());
     assert(assignment_new->reset());
 
-    auto bad_alignment = voris::mem::make_unique_buffer(
-        voris::mem::resource_ref{backend}, 8U, 3U, voris::mem::memory_tag{"m3.bad"});
+    auto bad_alignment =
+        voris::mem::make_unique_buffer(voris::mem::resource_ref{backend}, 8U, 3U, voris::mem::memory_tag{"m3.bad"});
     assert(!bad_alignment);
     assert(bad_alignment.error() == voris::mem::errc::invalid_alignment);
 }
 
-void test_shared_buffer() {
+void test_shared_buffer()
+{
     recording_resource backend;
-    auto made = voris::mem::make_shared_buffer(
-        voris::mem::resource_ref{backend},
-        24U,
-        8U,
-        voris::mem::memory_tag{"m3.shared"},
-        voris::mem::shared_buffer_options{.owner_generation = 7U});
+    auto made =
+        voris::mem::make_shared_buffer(voris::mem::resource_ref{backend}, 24U, 8U, voris::mem::memory_tag{"m3.shared"},
+                                       voris::mem::shared_buffer_options{.owner_generation = 7U});
     assert(made);
     assert(made->use_count() == 1U);
     assert(made->owner_generation() == 7U);
@@ -296,11 +310,8 @@ void test_shared_buffer() {
     assert(backend.last_deallocate_thread() == releasing_thread);
 
     recording_resource reset_retry_backend;
-    auto reset_retry = voris::mem::make_shared_buffer(
-        voris::mem::resource_ref{reset_retry_backend},
-        8U,
-        8U,
-        voris::mem::memory_tag{"m3.shared.reset.retry"});
+    auto reset_retry = voris::mem::make_shared_buffer(voris::mem::resource_ref{reset_retry_backend}, 8U, 8U,
+                                                      voris::mem::memory_tag{"m3.shared.reset.retry"});
     assert(reset_retry);
     reset_retry_backend.fail_deallocate(true);
     auto failed_reset = reset_retry->reset();
@@ -314,22 +325,16 @@ void test_shared_buffer() {
 
     recording_resource assignment_old_backend;
     recording_resource assignment_new_backend;
-    auto assignment_old = voris::mem::make_shared_buffer(
-        voris::mem::resource_ref{assignment_old_backend},
-        8U,
-        8U,
-        voris::mem::memory_tag{"m3.shared.assign.old"});
-    auto assignment_new = voris::mem::make_shared_buffer(
-        voris::mem::resource_ref{assignment_new_backend},
-        8U,
-        8U,
-        voris::mem::memory_tag{"m3.shared.assign.new"});
+    auto assignment_old = voris::mem::make_shared_buffer(voris::mem::resource_ref{assignment_old_backend}, 8U, 8U,
+                                                         voris::mem::memory_tag{"m3.shared.assign.old"});
+    auto assignment_new = voris::mem::make_shared_buffer(voris::mem::resource_ref{assignment_new_backend}, 8U, 8U,
+                                                         voris::mem::memory_tag{"m3.shared.assign.new"});
     assert(assignment_old);
     assert(assignment_new);
     assert(assignment_old->resize(3U));
     assert(assignment_new->resize(5U));
-    auto* old_data = assignment_old->data();
-    auto* new_data = assignment_new->data();
+    auto *old_data = assignment_old->data();
+    auto *new_data = assignment_new->data();
     assignment_old_backend.fail_deallocate(true);
     *assignment_old = std::move(*assignment_new);
     assert(assignment_old->data() == old_data);
@@ -346,11 +351,8 @@ void test_shared_buffer() {
         voris::mem::resource_thread_safety::shard_confined,
         false,
     };
-    auto rejected = voris::mem::make_shared_buffer(
-        voris::mem::resource_ref{shard_confined},
-        16U,
-        8U,
-        voris::mem::memory_tag{"m3.shared.reject"});
+    auto rejected = voris::mem::make_shared_buffer(voris::mem::resource_ref{shard_confined}, 16U, 8U,
+                                                   voris::mem::memory_tag{"m3.shared.reject"});
     assert(!rejected);
     assert(rejected.error() == voris::mem::errc::wrong_owner);
 
@@ -358,21 +360,15 @@ void test_shared_buffer() {
         voris::mem::resource_thread_safety::shard_confined,
         true,
     };
-    auto remote_final = voris::mem::make_shared_buffer(
-        voris::mem::resource_ref{remote_capable},
-        16U,
-        8U,
-        voris::mem::memory_tag{"m3.shared.remote"});
+    auto remote_final = voris::mem::make_shared_buffer(voris::mem::resource_ref{remote_capable}, 16U, 8U,
+                                                       voris::mem::memory_tag{"m3.shared.remote"});
     assert(remote_final);
     assert(remote_final->reset());
     assert(remote_capable.remote_deallocation_calls() == 1U);
 
-    auto overflow = voris::mem::make_shared_buffer(
-        voris::mem::resource_ref{backend},
-        8U,
-        8U,
-        voris::mem::memory_tag{"m3.shared.overflow"},
-        voris::mem::shared_buffer_options{.max_refcount = 1U});
+    auto overflow = voris::mem::make_shared_buffer(voris::mem::resource_ref{backend}, 8U, 8U,
+                                                   voris::mem::memory_tag{"m3.shared.overflow"},
+                                                   voris::mem::shared_buffer_options{.max_refcount = 1U});
     assert(overflow);
     auto overflow_clone = overflow->clone();
     assert(!overflow_clone);
@@ -380,12 +376,9 @@ void test_shared_buffer() {
     assert(overflow->reset());
 
 #if defined(VORIS_VMEM_ENABLE_TEST_HOOKS)
-    auto generation = voris::mem::make_shared_buffer(
-        voris::mem::resource_ref{backend},
-        8U,
-        8U,
-        voris::mem::memory_tag{"m3.shared.generation"},
-        voris::mem::shared_buffer_options{.owner_generation = 11U});
+    auto generation = voris::mem::make_shared_buffer(voris::mem::resource_ref{backend}, 8U, 8U,
+                                                     voris::mem::memory_tag{"m3.shared.generation"},
+                                                     voris::mem::shared_buffer_options{.owner_generation = 11U});
     assert(generation);
     generation->test_override_handle_generation(12U);
     auto stale_release = generation->reset();
@@ -396,7 +389,8 @@ void test_shared_buffer() {
 #endif
 }
 
-void test_buffer_chain_operations() {
+void test_buffer_chain_operations()
+{
     recording_resource backend;
     voris::mem::buffer_chain chain;
     assert(chain.append(literal_buffer("cd")));
@@ -407,15 +401,13 @@ void test_buffer_chain_operations() {
 
     auto slice = chain.slice(1U, 4U);
     assert(slice);
-    auto coalesced = slice->coalesce(
-        voris::mem::resource_ref{backend}, 4U, 8U, voris::mem::memory_tag{"m3.coalesce"});
+    auto coalesced = slice->coalesce(voris::mem::resource_ref{backend}, 4U, 8U, voris::mem::memory_tag{"m3.coalesce"});
     assert(coalesced);
     assert(coalesced->size() == 4U);
     assert(std::memcmp(coalesced->data(), "bcde", 4U) == 0);
     assert(coalesced->reset());
 
-    auto too_large = chain.coalesce(
-        voris::mem::resource_ref{backend}, 5U, 8U, voris::mem::memory_tag{"m3.too_large"});
+    auto too_large = chain.coalesce(voris::mem::resource_ref{backend}, 5U, 8U, voris::mem::memory_tag{"m3.too_large"});
     assert(!too_large);
     assert(too_large.error() == voris::mem::errc::budget_exceeded);
 
@@ -423,14 +415,13 @@ void test_buffer_chain_operations() {
     assert(chain.size() == 4U);
     assert(chain.trim(1U));
     assert(chain.size() == 3U);
-    auto final = chain.coalesce(
-        voris::mem::resource_ref{backend}, 3U, 8U, voris::mem::memory_tag{"m3.final"});
+    auto final = chain.coalesce(voris::mem::resource_ref{backend}, 3U, 8U, voris::mem::memory_tag{"m3.final"});
     assert(final);
     assert(std::memcmp(final->data(), "cde", 3U) == 0);
     assert(final->reset());
 
-    auto owned = voris::mem::make_unique_buffer(
-        voris::mem::resource_ref{backend}, 3U, 8U, voris::mem::memory_tag{"m3.owned"});
+    auto owned =
+        voris::mem::make_unique_buffer(voris::mem::resource_ref{backend}, 3U, 8U, voris::mem::memory_tag{"m3.owned"});
     assert(owned);
     assert(owned->resize(3U));
     std::memcpy(owned->data(), "xyz", 3U);
@@ -439,7 +430,8 @@ void test_buffer_chain_operations() {
     assert(owning_chain.segment(0U).data[2] == std::byte{'z'});
 }
 
-void test_buffer_chain_invalid_buffer_shapes() {
+void test_buffer_chain_invalid_buffer_shapes()
+{
     voris::mem::buffer_chain chain;
     const voris::mem::const_buffer invalid_source{nullptr, 4U};
     auto append_invalid = chain.append(invalid_source);
@@ -461,7 +453,8 @@ void test_buffer_chain_invalid_buffer_shapes() {
     assert(copied.error() == voris::mem::errc::wrong_owner);
 }
 
-void test_buffer_chain_move_empties_source() {
+void test_buffer_chain_move_empties_source()
+{
     recording_resource inline_backend;
     voris::mem::buffer_chain inline_chain;
     auto inline_owned = make_test_unique(inline_backend, 'i');
@@ -478,9 +471,9 @@ void test_buffer_chain_move_empties_source() {
 
     std::array<recording_resource, 5> spill_backends;
     voris::mem::buffer_chain spill_chain;
-    for (std::size_t index = 0U; index < spill_backends.size(); ++index) {
-        auto owned =
-            make_test_unique(spill_backends[index], static_cast<char>('a' + static_cast<char>(index)));
+    for (std::size_t index = 0U; index < spill_backends.size(); ++index)
+    {
+        auto owned = make_test_unique(spill_backends[index], static_cast<char>('a' + static_cast<char>(index)));
         assert(spill_chain.append(std::move(owned)));
     }
     voris::mem::buffer_chain moved_spill{std::move(spill_chain)};
@@ -525,11 +518,8 @@ void test_buffer_chain_move_empties_source() {
     }
     assert(new_backend.deallocation_calls() == 0U);
     assert(mixed_target.size() == 4U);
-    auto flat = mixed_target.coalesce(
-        voris::mem::resource_ref{coalesce_backend},
-        4U,
-        8U,
-        voris::mem::memory_tag{"m3.move.assign.mixed"});
+    auto flat = mixed_target.coalesce(voris::mem::resource_ref{coalesce_backend}, 4U, 8U,
+                                      voris::mem::memory_tag{"m3.move.assign.mixed"});
     assert(flat);
     assert(flat->size() == 4U);
     assert(std::memcmp(flat->data(), "qqqq", 4U) == 0);
@@ -539,7 +529,8 @@ void test_buffer_chain_move_empties_source() {
     failing_old_backend.release_all_for_test();
 }
 
-void test_buffer_chain_owned_segments_release_immediately() {
+void test_buffer_chain_owned_segments_release_immediately()
+{
     recording_resource unique_backend;
     voris::mem::buffer_chain single_unique;
     auto unique = make_test_unique(unique_backend, 'a');
@@ -564,9 +555,9 @@ void test_buffer_chain_owned_segments_release_immediately() {
 
     std::array<recording_resource, 4> inline_four_backends;
     voris::mem::buffer_chain inline_four;
-    for (std::size_t index = 0U; index < inline_four_backends.size(); ++index) {
-        auto segment = make_test_unique(
-            inline_four_backends[index], static_cast<char>('a' + static_cast<char>(index)));
+    for (std::size_t index = 0U; index < inline_four_backends.size(); ++index)
+    {
+        auto segment = make_test_unique(inline_four_backends[index], static_cast<char>('a' + static_cast<char>(index)));
         assert(inline_four.append(std::move(segment)));
     }
     assert(inline_four.segment_count() == 4U);
@@ -577,9 +568,9 @@ void test_buffer_chain_owned_segments_release_immediately() {
 
     std::array<recording_resource, 5> spill_backends;
     voris::mem::buffer_chain spill;
-    for (std::size_t index = 0U; index < spill_backends.size(); ++index) {
-        auto segment =
-            make_test_unique(spill_backends[index], static_cast<char>('k' + static_cast<char>(index)));
+    for (std::size_t index = 0U; index < spill_backends.size(); ++index)
+    {
+        auto segment = make_test_unique(spill_backends[index], static_cast<char>('k' + static_cast<char>(index)));
         assert(spill.append(std::move(segment)));
     }
     assert(spill.segment_count() == 5U);
@@ -615,12 +606,11 @@ void test_buffer_chain_owned_segments_release_immediately() {
     assert(shared_head_remote.remote_deallocation_calls() == 0U);
 }
 
-void test_parser_helpers_and_gather() {
+void test_parser_helpers_and_gather()
+{
     voris::mem::buffer_chain chain;
-    assert(chain.append(voris::mem::const_buffer{
-        reinterpret_cast<const std::byte*>("\x01\x02"), 2U}));
-    assert(chain.append(voris::mem::const_buffer{
-        reinterpret_cast<const std::byte*>("\x03:\x05"), 3U}));
+    assert(chain.append(voris::mem::const_buffer{reinterpret_cast<const std::byte *>("\x01\x02"), 2U}));
+    assert(chain.append(voris::mem::const_buffer{reinterpret_cast<const std::byte *>("\x03:\x05"), 3U}));
 
     auto be = voris::mem::peek_uint_be<std::uint32_t>(chain, 0U);
     assert(be);
@@ -659,87 +649,100 @@ void test_parser_helpers_and_gather() {
 #endif
 }
 
-void test_buffer_chain_properties() {
+void test_buffer_chain_properties()
+{
     recording_resource backend;
     recording_resource owned_backend;
     recording_resource shared_backend;
     std::mt19937_64 rng{0xC0FFEEU};
-    for (std::size_t iteration = 0; iteration < 128U; ++iteration) {
+    for (std::size_t iteration = 0; iteration < 128U; ++iteration)
+    {
         voris::mem::buffer_chain chain;
         std::vector<std::byte> model;
         std::vector<std::array<std::byte, 8>> stable_storage;
         stable_storage.reserve(64U);
-        for (std::size_t op = 0; op < 64U; ++op) {
+        for (std::size_t op = 0; op < 64U; ++op)
+        {
             const auto choice = rng() % 8U;
-            if (choice < 2U) {
+            if (choice < 2U)
+            {
                 std::array<std::byte, 8> storage{};
                 const auto count = static_cast<std::size_t>((rng() % storage.size()) + 1U);
-                for (std::size_t i = 0; i < count; ++i) {
+                for (std::size_t i = 0; i < count; ++i)
+                {
                     storage[i] = std::byte{static_cast<unsigned char>(rng() & 0xFFU)};
                 }
                 stable_storage.push_back(storage);
                 const auto view = voris::mem::const_buffer{stable_storage.back().data(), count};
-                if (choice == 0U) {
+                if (choice == 0U)
+                {
                     assert(chain.append(view));
                     model.insert(model.end(), view.data, view.data + view.size);
-                } else {
+                }
+                else
+                {
                     assert(chain.prepend(view));
                     model.insert(model.begin(), view.data, view.data + view.size);
                 }
-            } else if (choice == 2U) {
-                auto owned = voris::mem::make_unique_buffer(
-                    voris::mem::resource_ref{owned_backend},
-                    4U,
-                    8U,
-                    voris::mem::memory_tag{"m3.property.unique"});
+            }
+            else if (choice == 2U)
+            {
+                auto owned = voris::mem::make_unique_buffer(voris::mem::resource_ref{owned_backend}, 4U, 8U,
+                                                            voris::mem::memory_tag{"m3.property.unique"});
                 assert(owned);
                 assert(owned->resize(4U));
-                for (std::size_t i = 0U; i < 4U; ++i) {
+                for (std::size_t i = 0U; i < 4U; ++i)
+                {
                     owned->data()[i] = std::byte{static_cast<unsigned char>(rng() & 0xFFU)};
                 }
                 std::array<std::byte, 4> copied{};
                 std::memcpy(copied.data(), owned->data(), copied.size());
                 assert(chain.append(std::move(*owned)));
                 model.insert(model.end(), copied.begin(), copied.end());
-            } else if (choice == 3U) {
-                auto shared = voris::mem::make_shared_buffer(
-                    voris::mem::resource_ref{shared_backend},
-                    4U,
-                    8U,
-                    voris::mem::memory_tag{"m3.property.shared"});
+            }
+            else if (choice == 3U)
+            {
+                auto shared = voris::mem::make_shared_buffer(voris::mem::resource_ref{shared_backend}, 4U, 8U,
+                                                             voris::mem::memory_tag{"m3.property.shared"});
                 assert(shared);
                 assert(shared->resize(4U));
-                for (std::size_t i = 0U; i < 4U; ++i) {
+                for (std::size_t i = 0U; i < 4U; ++i)
+                {
                     shared->data()[i] = std::byte{static_cast<unsigned char>(rng() & 0xFFU)};
                 }
                 std::array<std::byte, 4> copied{};
                 std::memcpy(copied.data(), shared->data(), copied.size());
                 assert(chain.append(std::move(*shared)));
                 model.insert(model.end(), copied.begin(), copied.end());
-            } else if (choice == 4U && !model.empty()) {
+            }
+            else if (choice == 4U && !model.empty())
+            {
                 const auto count = static_cast<std::size_t>(rng() % (model.size() + 1U));
                 assert(chain.consume(count));
                 model.erase(model.begin(), model.begin() + static_cast<std::ptrdiff_t>(count));
-            } else if (choice == 5U && !model.empty()) {
+            }
+            else if (choice == 5U && !model.empty())
+            {
                 const auto count = static_cast<std::size_t>(rng() % (model.size() + 1U));
                 assert(chain.trim(count));
                 model.resize(model.size() - count);
-            } else if (choice == 6U) {
+            }
+            else if (choice == 6U)
+            {
                 const auto invalid_count = model.empty() ? 1U : model.size() + 1U;
                 assert(!chain.consume(invalid_count));
                 assert(!chain.trim(invalid_count));
                 assert(!chain.slice(model.size(), 1U));
-            } else if (!model.empty()) {
+            }
+            else if (!model.empty())
+            {
                 const auto offset = static_cast<std::size_t>(rng() % model.size());
                 const auto max_count = model.size() - offset;
                 const auto count = static_cast<std::size_t>(rng() % (max_count + 1U));
                 auto sliced = chain.slice(offset, count);
                 assert(sliced);
-                auto flat_slice = sliced->coalesce(
-                    voris::mem::resource_ref{backend},
-                    count,
-                    8U,
-                    voris::mem::memory_tag{"m3.property.slice"});
+                auto flat_slice = sliced->coalesce(voris::mem::resource_ref{backend}, count, 8U,
+                                                   voris::mem::memory_tag{"m3.property.slice"});
                 assert(flat_slice);
                 assert(std::equal(model.begin() + static_cast<std::ptrdiff_t>(offset),
                                   model.begin() + static_cast<std::ptrdiff_t>(offset + count),
@@ -747,11 +750,8 @@ void test_buffer_chain_properties() {
                 assert(flat_slice->reset());
             }
             assert(chain.size() == model.size());
-            auto flat = chain.coalesce(
-                voris::mem::resource_ref{backend},
-                model.size(),
-                8U,
-                voris::mem::memory_tag{"m3.property"});
+            auto flat = chain.coalesce(voris::mem::resource_ref{backend}, model.size(), 8U,
+                                       voris::mem::memory_tag{"m3.property"});
             assert(flat);
             assert(flat->size() == model.size());
             assert(std::equal(model.begin(), model.end(), flat->const_view().data));
@@ -762,7 +762,8 @@ void test_buffer_chain_properties() {
 
 } // namespace
 
-int main() {
+int main()
+{
     test_buffer_views();
     test_unique_buffer();
     test_shared_buffer();

@@ -12,15 +12,18 @@
 #include <type_traits>
 
 #if defined(NDEBUG)
-#    error "VMem assert-style tests require assertions enabled"
+#error "VMem assert-style tests require assertions enabled"
 #endif
 
-namespace {
+namespace
+{
 
-class recording_resource {
-public:
-    std::expected<voris::mem::allocation, voris::mem::errc>
-    allocate(const voris::mem::allocation_request& request) noexcept {
+class recording_resource
+{
+  public:
+    std::expected<voris::mem::allocation, voris::mem::errc> allocate(
+        const voris::mem::allocation_request &request) noexcept
+    {
         last_request_ = request;
         snapshot_.active_bytes += request.size;
         snapshot_.active_allocations += 1;
@@ -28,8 +31,8 @@ public:
         return voris::mem::allocation{storage_, request.size, request.alignment};
     }
 
-    std::expected<void, voris::mem::errc>
-    deallocate(voris::mem::allocation block) noexcept {
+    std::expected<void, voris::mem::errc> deallocate(voris::mem::allocation block) noexcept
+    {
         last_deallocation_ = block;
         snapshot_.active_bytes -= block.size;
         snapshot_.active_allocations -= 1;
@@ -37,7 +40,8 @@ public:
         return {};
     }
 
-    [[nodiscard]] voris::mem::resource_traits traits() const noexcept {
+    [[nodiscard]] voris::mem::resource_traits traits() const noexcept
+    {
         return voris::mem::resource_traits{
             .name = "recording_resource",
             .ownership = voris::mem::resource_ownership::caller_owned,
@@ -46,19 +50,22 @@ public:
         };
     }
 
-    [[nodiscard]] voris::mem::usage_snapshot usage() const noexcept {
+    [[nodiscard]] voris::mem::usage_snapshot usage() const noexcept
+    {
         return snapshot_;
     }
 
-    [[nodiscard]] const voris::mem::allocation_request& last_request() const noexcept {
+    [[nodiscard]] const voris::mem::allocation_request &last_request() const noexcept
+    {
         return last_request_;
     }
 
-    [[nodiscard]] voris::mem::allocation last_deallocation() const noexcept {
+    [[nodiscard]] voris::mem::allocation last_deallocation() const noexcept
+    {
         return last_deallocation_;
     }
 
-private:
+  private:
     alignas(std::max_align_t) std::byte storage_[64]{};
     voris::mem::allocation_request last_request_{};
     voris::mem::allocation last_deallocation_{};
@@ -70,7 +77,8 @@ private:
 static_assert(std::is_trivially_copyable_v<voris::mem::resource_ref>);
 static_assert(std::is_nothrow_copy_constructible_v<voris::mem::resource_ref>);
 
-int main() {
+int main()
+{
     using voris::mem::align_up;
     using voris::mem::checked_add;
     using voris::mem::checked_mul;
@@ -111,12 +119,10 @@ int main() {
     auto empty_allocate = empty_ref.allocate(8, alignof(std::max_align_t), tag);
     assert(!empty_allocate);
     assert(empty_allocate.error() == errc::wrong_owner);
-    auto empty_deallocate =
-        empty_ref.deallocate(voris::mem::allocation{nullptr, 0, alignof(std::max_align_t)});
+    auto empty_deallocate = empty_ref.deallocate(voris::mem::allocation{nullptr, 0, alignof(std::max_align_t)});
     assert(!empty_deallocate);
     assert(empty_deallocate.error() == errc::wrong_owner);
-    auto empty_remote =
-        empty_ref.remote_deallocate(voris::mem::allocation{nullptr, 0, alignof(std::max_align_t)});
+    auto empty_remote = empty_ref.remote_deallocate(voris::mem::allocation{nullptr, 0, alignof(std::max_align_t)});
     assert(!empty_remote);
     assert(empty_remote.error() == errc::wrong_owner);
     assert(empty_ref.traits().name.empty());

@@ -13,8 +13,8 @@ M6 adds `vmem_m6_release_benchmark`, which prints deterministic comma-separated 
 Run the smoke benchmark and threshold check with:
 
 ```bash
-xmake f -m release --build_benchmarks=y
-xmake
+xmake f -m release
+xmake -g benchmarks
 xmake run vmem_m6_release_benchmark > m6-release-benchmark.txt
 python tools/check_release_benchmark_thresholds.py m6-release-benchmark.txt
 ```

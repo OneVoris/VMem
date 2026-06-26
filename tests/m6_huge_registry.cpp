@@ -6,10 +6,11 @@
 #include <cstddef>
 
 #if defined(NDEBUG)
-#    error "VMem assert-style tests require assertions enabled"
+#error "VMem assert-style tests require assertions enabled"
 #endif
 
-int main() {
+int main()
+{
     alignas(4096) std::byte storage[4096]{};
     const auto span = voris::mem::page_span{storage, sizeof(storage)};
 

@@ -9,13 +9,15 @@
 #include <string_view>
 #include <thread>
 
-namespace {
+namespace
+{
 
-[[nodiscard]] bool address_sanitizer_build() noexcept {
+[[nodiscard]] bool address_sanitizer_build() noexcept
+{
 #if defined(__has_feature)
-#    if __has_feature(address_sanitizer)
+#if __has_feature(address_sanitizer)
     return true;
-#    endif
+#endif
 #endif
 #if defined(__SANITIZE_ADDRESS__)
     return true;
@@ -24,11 +26,12 @@ namespace {
 #endif
 }
 
-[[nodiscard]] bool thread_sanitizer_build() noexcept {
+[[nodiscard]] bool thread_sanitizer_build() noexcept
+{
 #if defined(__has_feature)
-#    if __has_feature(thread_sanitizer)
+#if __has_feature(thread_sanitizer)
     return true;
-#    endif
+#endif
 #endif
 #if defined(__SANITIZE_THREAD__)
     return true;
@@ -37,8 +40,10 @@ namespace {
 #endif
 }
 
-int run_asan_probe() {
-    if (!address_sanitizer_build()) {
+int run_asan_probe()
+{
+    if (!address_sanitizer_build())
+    {
         std::cout << "m5_asan_visibility_probe,status=not_instrumented\n";
         return 0;
     }
@@ -54,22 +59,25 @@ int run_asan_probe() {
     };
 
     auto block = debug.allocate(voris::mem::make_allocation_request(64U, 16U));
-    if (!block) {
+    if (!block)
+    {
         return 2;
     }
-    auto* payload = static_cast<std::byte*>(block->data);
+    auto *payload = static_cast<std::byte *>(block->data);
     payload[block->size] = std::byte{0x7F};
     return 3;
 }
 
-int run_ubsan_probe() {
+int run_ubsan_probe()
+{
     voris::mem::system_resource system;
     voris::mem::debug_resource debug{voris::mem::resource_ref{system}};
     auto block = debug.allocate(voris::mem::make_allocation_request(sizeof(int), alignof(int)));
-    if (!block) {
+    if (!block)
+    {
         return 4;
     }
-    auto* value = static_cast<int*>(block->data);
+    auto *value = static_cast<int *>(block->data);
     *value = INT_MAX;
     volatile int increment = 1;
     *value = *value + increment;
@@ -78,8 +86,10 @@ int run_ubsan_probe() {
     return 0;
 }
 
-int run_tsan_probe() {
-    if (!thread_sanitizer_build()) {
+int run_tsan_probe()
+{
+    if (!thread_sanitizer_build())
+    {
         std::cout << "m5_tsan_visibility_probe,status=not_instrumented\n";
         return 0;
     }
@@ -87,21 +97,25 @@ int run_tsan_probe() {
     voris::mem::system_resource system;
     voris::mem::debug_resource debug{voris::mem::resource_ref{system}};
     auto block = debug.allocate(voris::mem::make_allocation_request(sizeof(int), alignof(int)));
-    if (!block) {
+    if (!block)
+    {
         return 5;
     }
-    auto* shared = static_cast<int*>(block->data);
+    auto *shared = static_cast<int *>(block->data);
     std::atomic<bool> start{};
     std::thread first{[&] {
-        while (!start.load(std::memory_order_acquire)) {
+        while (!start.load(std::memory_order_acquire))
+        {
         }
-        for (int index = 0; index < 1024; ++index) {
+        for (int index = 0; index < 1024; ++index)
+        {
             *shared = index;
         }
     }};
     std::thread second{[&] {
         start.store(true, std::memory_order_release);
-        for (int index = 0; index < 1024; ++index) {
+        for (int index = 0; index < 1024; ++index)
+        {
             *shared = index + 1;
         }
     }};
@@ -113,9 +127,11 @@ int run_tsan_probe() {
 
 } // namespace
 
-int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv) {
+int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
+{
 #if defined(VORIS_VMEM_M5_ASAN_UBSAN_VISIBILITY_PROBE)
-    if (argc > 1 && std::string_view{argv[1]} == "ubsan") {
+    if (argc > 1 && std::string_view{argv[1]} == "ubsan")
+    {
         return run_ubsan_probe();
     }
     return run_asan_probe();

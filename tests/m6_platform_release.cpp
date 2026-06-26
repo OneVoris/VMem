@@ -10,18 +10,19 @@
 #include <limits>
 
 #if defined(NDEBUG)
-#    error "VMem assert-style tests require assertions enabled"
+#error "VMem assert-style tests require assertions enabled"
 #endif
 
-namespace {
+namespace
+{
 
-void exercise_committed_span(voris::mem::os_page_source& pages,
-                             voris::mem::page_span span) {
+void exercise_committed_span(voris::mem::os_page_source &pages, voris::mem::page_span span)
+{
     assert(span.data != nullptr);
     assert(span.size != 0U);
     assert(pages.commit(span));
 
-    auto* bytes = static_cast<volatile unsigned char*>(span.data);
+    auto *bytes = static_cast<volatile unsigned char *>(span.data);
     bytes[0] = 0x5AU;
     bytes[span.size - 1U] = 0xA5U;
 
@@ -31,7 +32,8 @@ void exercise_committed_span(voris::mem::os_page_source& pages,
 
 } // namespace
 
-int main() {
+int main()
+{
     using voris::mem::cache_line_size;
     using voris::mem::errc;
     using voris::mem::is_power_of_two;
@@ -69,10 +71,13 @@ int main() {
     exercise_committed_span(pages, *normal);
 
     auto huge_size = pages.huge_page_size();
-    if (huge_size) {
+    if (huge_size)
+    {
         assert(*huge_size >= *page_size);
         assert(is_power_of_two(*huge_size));
-    } else {
+    }
+    else
+    {
         assert(huge_size.error() == errc::unsupported_platform);
     }
 
@@ -89,11 +94,13 @@ int main() {
         .allow_huge_page_fallback = false,
     };
     auto required = pages.reserve(*page_size, require_huge);
-    if (required) {
+    if (required)
+    {
         exercise_committed_span(pages, *required);
-    } else {
-        assert(required.error() == errc::unsupported_platform ||
-               required.error() == errc::out_of_memory ||
+    }
+    else
+    {
+        assert(required.error() == errc::unsupported_platform || required.error() == errc::out_of_memory ||
                required.error() == errc::invalid_alignment);
     }
 #else

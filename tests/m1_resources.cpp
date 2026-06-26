@@ -15,22 +15,28 @@
 #include <vector>
 
 #if defined(NDEBUG)
-#    error "VMem assert-style tests require assertions enabled"
+#error "VMem assert-style tests require assertions enabled"
 #endif
 
-namespace {
+namespace
+{
 
-class fake_page_source {
-public:
-    explicit fake_page_source(std::size_t page_size = 4096) : page_size_(page_size) {}
+class fake_page_source
+{
+  public:
+    explicit fake_page_source(std::size_t page_size = 4096) : page_size_(page_size)
+    {
+    }
 
-    std::expected<std::size_t, voris::mem::errc> page_size() const noexcept {
+    std::expected<std::size_t, voris::mem::errc> page_size() const noexcept
+    {
         return page_size_;
     }
 
-    std::expected<voris::mem::page_span, voris::mem::errc>
-    reserve(std::size_t size) noexcept {
-        if (fail_reserve_) {
+    std::expected<voris::mem::page_span, voris::mem::errc> reserve(std::size_t size) noexcept
+    {
+        if (fail_reserve_)
+        {
             return std::unexpected(voris::mem::errc::out_of_memory);
         }
         last_reserved_size_ = size;
@@ -39,22 +45,26 @@ public:
         return voris::mem::page_span{storage_.data(), size};
     }
 
-    std::expected<void, voris::mem::errc> commit(voris::mem::page_span span) noexcept {
+    std::expected<void, voris::mem::errc> commit(voris::mem::page_span span) noexcept
+    {
         last_committed_size_ = span.size;
-        if (fail_commit_) {
+        if (fail_commit_)
+        {
             return std::unexpected(voris::mem::errc::out_of_memory);
         }
         committed_ += 1;
         return {};
     }
 
-    std::expected<void, voris::mem::errc> decommit(voris::mem::page_span span) noexcept {
+    std::expected<void, voris::mem::errc> decommit(voris::mem::page_span span) noexcept
+    {
         last_decommitted_size_ = span.size;
         decommitted_ += 1;
         return {};
     }
 
-    std::expected<void, voris::mem::errc> release(voris::mem::page_span span) noexcept {
+    std::expected<void, voris::mem::errc> release(voris::mem::page_span span) noexcept
+    {
         last_released_size_ = span.size;
         released_ += 1;
         storage_.clear();
@@ -72,27 +82,30 @@ public:
     std::size_t decommitted_{};
     std::size_t released_{};
 
-private:
+  private:
     std::size_t page_size_{};
     std::vector<std::byte> storage_{};
 };
 
-class fake_accounting_resource {
-public:
-    std::expected<voris::mem::allocation, voris::mem::errc>
-    allocate(const voris::mem::allocation_request& request) noexcept {
+class fake_accounting_resource
+{
+  public:
+    std::expected<voris::mem::allocation, voris::mem::errc> allocate(
+        const voris::mem::allocation_request &request) noexcept
+    {
         allocation_calls_ += 1;
         return voris::mem::allocation{fake_pointer_, request.size, request.alignment};
     }
 
-    std::expected<void, voris::mem::errc>
-    deallocate(voris::mem::allocation block) noexcept {
+    std::expected<void, voris::mem::errc> deallocate(voris::mem::allocation block) noexcept
+    {
         last_deallocated_ = block;
         deallocation_calls_ += 1;
         return {};
     }
 
-    [[nodiscard]] voris::mem::resource_traits traits() const noexcept {
+    [[nodiscard]] voris::mem::resource_traits traits() const noexcept
+    {
         return voris::mem::resource_traits{
             .name = "fake_accounting_resource",
             .ownership = voris::mem::resource_ownership::caller_owned,
@@ -101,11 +114,12 @@ public:
         };
     }
 
-    [[nodiscard]] voris::mem::usage_snapshot usage() const noexcept {
+    [[nodiscard]] voris::mem::usage_snapshot usage() const noexcept
+    {
         return {};
     }
 
-    void* fake_pointer_{reinterpret_cast<void*>(alignof(std::max_align_t))};
+    void *fake_pointer_{reinterpret_cast<void *>(alignof(std::max_align_t))};
     voris::mem::allocation last_deallocated_{};
     std::size_t allocation_calls_{};
     std::size_t deallocation_calls_{};
@@ -113,7 +127,8 @@ public:
 
 } // namespace
 
-int main() {
+int main()
+{
     using voris::mem::allocation;
     using voris::mem::counting_resource;
     using voris::mem::errc;
@@ -139,8 +154,7 @@ int main() {
     assert(!bad_alignment);
     assert(bad_alignment.error() == errc::invalid_alignment);
 
-    auto impossible_size =
-        system.allocate(make_allocation_request(std::numeric_limits<std::size_t>::max(), 2));
+    auto impossible_size = system.allocate(make_allocation_request(std::numeric_limits<std::size_t>::max(), 2));
     assert(!impossible_size);
     assert(impossible_size.error() == errc::size_overflow);
 
@@ -250,21 +264,17 @@ int main() {
     fake_accounting_resource counted_fake;
     counting_resource counted_overflow{resource_ref{counted_fake}};
     auto counted_huge = counted_overflow.allocate(
-        make_allocation_request(std::numeric_limits<std::size_t>::max() - 4,
-                                alignof(std::max_align_t)));
+        make_allocation_request(std::numeric_limits<std::size_t>::max() - 4, alignof(std::max_align_t)));
     assert(counted_huge);
-    auto counted_overflowed =
-        counted_overflow.allocate(make_allocation_request(8, alignof(std::max_align_t)));
+    auto counted_overflowed = counted_overflow.allocate(make_allocation_request(8, alignof(std::max_align_t)));
     assert(!counted_overflowed);
     assert(counted_overflowed.error() == errc::size_overflow);
-    assert(counted_overflow.usage().active_bytes ==
-           std::numeric_limits<std::size_t>::max() - 4);
+    assert(counted_overflow.usage().active_bytes == std::numeric_limits<std::size_t>::max() - 4);
     assert(counted_fake.allocation_calls_ == 1);
 
     fake_accounting_resource counted_underflow_fake;
     counting_resource counted_underflow{resource_ref{counted_underflow_fake}};
-    auto counted_wrong_owner =
-        counted_underflow.deallocate(allocation{counted_underflow_fake.fake_pointer_, 8, 8});
+    auto counted_wrong_owner = counted_underflow.deallocate(allocation{counted_underflow_fake.fake_pointer_, 8, 8});
     assert(!counted_wrong_owner);
     assert(counted_wrong_owner.error() == errc::wrong_owner);
     assert(counted_underflow.usage().active_bytes == 0);
@@ -272,12 +282,11 @@ int main() {
 
     fake_accounting_resource counted_shape_fake;
     counting_resource counted_shape{resource_ref{counted_shape_fake}};
-    auto counted_shape_block =
-        counted_shape.allocate(make_allocation_request(16, alignof(std::max_align_t)));
+    auto counted_shape_block = counted_shape.allocate(make_allocation_request(16, alignof(std::max_align_t)));
     assert(counted_shape_block);
     const auto counted_shape_usage = counted_shape.usage();
-    auto counted_null_nonzero = counted_shape.deallocate(
-        allocation{nullptr, counted_shape_block->size, counted_shape_block->alignment});
+    auto counted_null_nonzero =
+        counted_shape.deallocate(allocation{nullptr, counted_shape_block->size, counted_shape_block->alignment});
     assert(!counted_null_nonzero);
     assert(counted_null_nonzero.error() == errc::wrong_owner);
     assert(counted_shape.usage().active_bytes == counted_shape_usage.active_bytes);
@@ -315,8 +324,7 @@ int main() {
         resource_ref{byte_backend},
         fault_injection_options{.fail_after_requested_bytes = 10},
     };
-    auto under_byte_limit =
-        fail_after_bytes.allocate(make_allocation_request(6, alignof(std::max_align_t)));
+    auto under_byte_limit = fail_after_bytes.allocate(make_allocation_request(6, alignof(std::max_align_t)));
     assert(under_byte_limit);
     auto over_bytes = fail_after_bytes.allocate(make_allocation_request(5, alignof(std::max_align_t)));
     assert(!over_bytes);
@@ -336,21 +344,17 @@ int main() {
     fake_accounting_resource fault_fake;
     fault_injection_resource fault_overflow{resource_ref{fault_fake}};
     auto fault_huge = fault_overflow.allocate(
-        make_allocation_request(std::numeric_limits<std::size_t>::max() - 4,
-                                alignof(std::max_align_t)));
+        make_allocation_request(std::numeric_limits<std::size_t>::max() - 4, alignof(std::max_align_t)));
     assert(fault_huge);
-    auto fault_overflowed =
-        fault_overflow.allocate(make_allocation_request(8, alignof(std::max_align_t)));
+    auto fault_overflowed = fault_overflow.allocate(make_allocation_request(8, alignof(std::max_align_t)));
     assert(!fault_overflowed);
     assert(fault_overflowed.error() == errc::size_overflow);
-    assert(fault_overflow.usage().active_bytes ==
-           std::numeric_limits<std::size_t>::max() - 4);
+    assert(fault_overflow.usage().active_bytes == std::numeric_limits<std::size_t>::max() - 4);
     assert(fault_fake.allocation_calls_ == 1);
 
     fake_accounting_resource fault_underflow_fake;
     fault_injection_resource fault_underflow{resource_ref{fault_underflow_fake}};
-    auto fault_wrong_owner =
-        fault_underflow.deallocate(allocation{fault_underflow_fake.fake_pointer_, 8, 8});
+    auto fault_wrong_owner = fault_underflow.deallocate(allocation{fault_underflow_fake.fake_pointer_, 8, 8});
     assert(!fault_wrong_owner);
     assert(fault_wrong_owner.error() == errc::wrong_owner);
     assert(fault_underflow.usage().active_bytes == 0);
@@ -358,12 +362,11 @@ int main() {
 
     fake_accounting_resource fault_shape_fake;
     fault_injection_resource fault_shape{resource_ref{fault_shape_fake}};
-    auto fault_shape_block =
-        fault_shape.allocate(make_allocation_request(16, alignof(std::max_align_t)));
+    auto fault_shape_block = fault_shape.allocate(make_allocation_request(16, alignof(std::max_align_t)));
     assert(fault_shape_block);
     const auto fault_shape_usage = fault_shape.usage();
-    auto fault_null_nonzero = fault_shape.deallocate(
-        allocation{nullptr, fault_shape_block->size, fault_shape_block->alignment});
+    auto fault_null_nonzero =
+        fault_shape.deallocate(allocation{nullptr, fault_shape_block->size, fault_shape_block->alignment});
     assert(!fault_null_nonzero);
     assert(fault_null_nonzero.error() == errc::wrong_owner);
     assert(fault_shape.usage().active_bytes == fault_shape_usage.active_bytes);
@@ -392,7 +395,7 @@ int main() {
     assert(span);
     assert(span->size == *page_size);
     assert(pages.commit(*span));
-    auto* page_bytes = static_cast<volatile unsigned char*>(span->data);
+    auto *page_bytes = static_cast<volatile unsigned char *>(span->data);
     page_bytes[0] = 0xC3U;
     assert(pages.decommit(*span));
     assert(pages.release(*span));

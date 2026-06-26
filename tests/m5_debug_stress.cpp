@@ -10,10 +10,11 @@
 #include <vector>
 
 #if defined(NDEBUG)
-#    error "VMem assert-style tests require assertions enabled"
+#error "VMem assert-style tests require assertions enabled"
 #endif
 
-int main() {
+int main()
+{
     voris::mem::system_resource system;
     voris::mem::debug_resource debug{
         voris::mem::resource_ref{system},
@@ -25,12 +26,15 @@ int main() {
     std::vector<std::thread> threads;
     threads.reserve(thread_count);
 
-    for (std::size_t thread_index = 0U; thread_index < thread_count; ++thread_index) {
+    for (std::size_t thread_index = 0U; thread_index < thread_count; ++thread_index)
+    {
         threads.emplace_back([&, thread_index] {
             std::array<voris::mem::debug_allocation, 8> live{};
-            for (std::size_t iteration = 0U; iteration < iterations; ++iteration) {
+            for (std::size_t iteration = 0U; iteration < iterations; ++iteration)
+            {
                 const auto slot = iteration % live.size();
-                if (live[slot].block.data != nullptr) {
+                if (live[slot].block.data != nullptr)
+                {
                     assert(debug.deallocate_block(live[slot]));
                     live[slot] = {};
                 }
@@ -39,15 +43,18 @@ int main() {
                 assert(block);
                 live[slot] = *block;
             }
-            for (auto block : live) {
-                if (block.block.data != nullptr) {
+            for (auto block : live)
+            {
+                if (block.block.data != nullptr)
+                {
                     assert(debug.deallocate_block(block));
                 }
             }
         });
     }
 
-    for (auto& thread : threads) {
+    for (auto &thread : threads)
+    {
         thread.join();
     }
 

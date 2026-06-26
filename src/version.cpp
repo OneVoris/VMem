@@ -1,8 +1,10 @@
 #include <voris/mem/version.hpp>
 
-namespace voris::mem {
+namespace voris::mem
+{
 
-std::string_view version() noexcept {
+std::string_view version() noexcept
+{
     return library_version;
 }
 

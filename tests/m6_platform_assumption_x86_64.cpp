@@ -14,4 +14,6 @@ static_assert(voris::mem::cache_line_size == 64U);
 static_assert(voris::mem::cache_line_assumption_available);
 static_assert(voris::mem::cache_line_size >= alignof(std::max_align_t));
 
-void vmem_m6_platform_assumption_x86_64_compiles() noexcept {}
+void vmem_m6_platform_assumption_x86_64_compiles() noexcept
+{
+}

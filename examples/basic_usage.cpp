@@ -8,7 +8,8 @@
 #include <cstddef>
 #include <cstring>
 
-int main() {
+int main()
+{
     voris::mem::system_resource system;
     voris::mem::resource_ref resource{system};
 
@@ -25,7 +26,8 @@ int main() {
     auto page_size = pages.page_size();
     assert(page_size);
     auto span = pages.reserve(*page_size);
-    if (span) {
+    if (span)
+    {
         assert(pages.commit(*span));
         assert(pages.decommit(*span));
         assert(pages.release(*span));

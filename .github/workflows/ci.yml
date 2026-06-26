@@ -29,7 +29,7 @@ jobs:
         run: python tools/check_release_readiness.py
 
       - name: Configure Debug
-        run: xmake f -m debug --build_tests=y
+        run: xmake f -m debug
 
       - name: Build Debug
         run: xmake
@@ -38,7 +38,7 @@ jobs:
         run: xmake test
 
       - name: Configure Release
-        run: xmake f -m release --build_tests=y
+        run: xmake f -m release
 
       - name: Build Release
         run: xmake
@@ -60,13 +60,18 @@ jobs:
           xmake-version: latest
 
       - name: Configure ASan and UBSan
-        run: xmake f -m debug --build_tests=y --build_fuzzers=y --build_sanitizer_probes=y --sanitize=address-undefined
+        run: xmake f -m debug --policies=build.sanitizer.address,build.sanitizer.undefined
 
       - name: Build ASan and UBSan
         run: xmake
 
       - name: Test ASan and UBSan
         run: xmake test
+
+      - name: Build ASan and UBSan fuzz and probe targets
+        run: |
+          xmake -g fuzz
+          xmake -g sanitizer-probes
 
       - name: Run fuzz smoke under ASan and UBSan
         run: |
@@ -109,13 +114,18 @@ jobs:
           xmake-version: latest
 
       - name: Configure TSan
-        run: xmake f -m debug --build_tests=y --build_fuzzers=y --build_sanitizer_probes=y --sanitize=thread
+        run: xmake f -m debug --policies=build.sanitizer.thread
 
       - name: Build TSan
         run: xmake
 
       - name: Test TSan
         run: xmake test
+
+      - name: Build TSan fuzz and probe targets
+        run: |
+          xmake -g fuzz
+          xmake -g sanitizer-probes
 
       - name: Run fuzz smoke under TSan
         run: |

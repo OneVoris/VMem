@@ -40,19 +40,19 @@ Local command evidence:
 - `python tools/check_repository.py`: passed.
 - `python tools/check_m6_spec_claims.py`: passed.
 - `python tools/check_release_readiness.py`: passed.
-- `xmake f -m debug --build_tests=y && xmake && xmake test`: 14/14 tests passed.
-- `xmake f -m release --build_tests=y && xmake && xmake test`: 14/14 tests passed.
-- `xmake f -m release --build_examples=y && xmake && xmake run vmem_basic_usage_example`: passed.
-- `xmake f -m release --build_fuzzers=y && xmake`: passed.
+- `xmake f -m debug && xmake && xmake test`: 14/14 tests passed.
+- `xmake f -m release && xmake && xmake test`: 14/14 tests passed.
+- `xmake f -m release && xmake -g examples && xmake run vmem_basic_usage_example`: passed.
+- `xmake f -m release && xmake -g fuzz`: passed.
 - `xmake run vmem_m3_buffer_chain_fuzz`: `buffer_chain_fuzz_smoke,seeds=32,status=ok`.
 - `xmake run vmem_m5_allocator_corruption_fuzz`: `allocator_corruption_fuzz_smoke,seeds=32,status=ok`.
-- `xmake f -m release --build_benchmarks=y && xmake`: passed.
+- `xmake f -m release && xmake -g benchmarks`: passed.
 - `xmake run vmem_m6_release_benchmark`: `m6_page_source_roundtrip` 581 us, `m6_huge_page_prefer_fallback` 27 us, `m6_system_resource_aligned_64` 383 us.
 - `python tools/check_release_benchmark_thresholds.py C:\tmp\vmem-m6-release-benchmark.txt`: passed.
-- `xmake f -m debug --build_sanitizer_probes=y --sanitize=address-undefined && xmake`: passed.
+- `xmake f -m debug --policies=build.sanitizer.address,build.sanitizer.undefined && xmake build vmem_m5_asan_ubsan_visibility_probe`: passed.
 - `xmake run vmem_m5_asan_ubsan_visibility_probe`: `m5_asan_visibility_probe,status=not_instrumented`.
 - `xmake run vmem_m5_asan_ubsan_visibility_probe ubsan`: `m5_ubsan_visibility_probe,status=completed_without_ubsan_abort`.
-- `xmake f -m debug --build_sanitizer_probes=y --sanitize=thread && xmake`: passed.
+- `xmake f -m debug --policies=build.sanitizer.thread && xmake build vmem_m5_tsan_visibility_probe`: passed.
 - `xmake run vmem_m5_tsan_visibility_probe`: `m5_tsan_visibility_probe,status=not_instrumented`.
 
 Windows/MSVC ASan and TSan visibility probe modes are expected to print `status=not_instrumented`, while the UBSan probe mode completes without a sanitizer abort. ASan+UBSan and TSan release evidence comes from the Ubuntu CI sanitizer jobs.

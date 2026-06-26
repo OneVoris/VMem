@@ -5,8 +5,8 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
-#include <mutex>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <string_view>
 #include <thread>
@@ -14,42 +14,49 @@
 #include <vector>
 
 #if defined(NDEBUG)
-#    error "VMem assert-style tests require assertions enabled"
+#error "VMem assert-style tests require assertions enabled"
 #endif
 
-namespace {
+namespace
+{
 
-class event_recorder {
-public:
-    void operator()(const voris::mem::budget_event& event) noexcept {
+class event_recorder
+{
+  public:
+    void operator()(const voris::mem::budget_event &event) noexcept
+    {
         std::lock_guard guard{mutex_};
         events_.push_back(event);
     }
 
-    [[nodiscard]] std::size_t count(voris::mem::budget_event_kind kind) const noexcept {
+    [[nodiscard]] std::size_t count(voris::mem::budget_event_kind kind) const noexcept
+    {
         std::lock_guard guard{mutex_};
-        return static_cast<std::size_t>(std::count_if(events_.begin(), events_.end(), [kind](const auto& event) {
-            return event.kind == kind;
-        }));
+        return static_cast<std::size_t>(
+            std::count_if(events_.begin(), events_.end(), [kind](const auto &event) { return event.kind == kind; }));
     }
 
-    [[nodiscard]] std::vector<voris::mem::budget_event> events() const {
+    [[nodiscard]] std::vector<voris::mem::budget_event> events() const
+    {
         std::lock_guard guard{mutex_};
         return events_;
     }
 
-private:
+  private:
     mutable std::mutex mutex_{};
     std::vector<voris::mem::budget_event> events_{};
 };
 
-class reentrant_event_recorder {
-public:
-    void set_budget(voris::mem::budget_node& budget) noexcept {
+class reentrant_event_recorder
+{
+  public:
+    void set_budget(voris::mem::budget_node &budget) noexcept
+    {
         budget_ = &budget;
     }
 
-    void operator()(const voris::mem::budget_event&) noexcept {
+    void operator()(const voris::mem::budget_event &) noexcept
+    {
         assert(budget_ != nullptr);
         ++calls_;
         auto snapshots = budget_->snapshots();
@@ -59,68 +66,74 @@ public:
         assert(token->rollback());
     }
 
-    [[nodiscard]] std::size_t calls() const noexcept {
+    [[nodiscard]] std::size_t calls() const noexcept
+    {
         return calls_;
     }
 
-    [[nodiscard]] std::size_t observed_snapshot_count() const noexcept {
+    [[nodiscard]] std::size_t observed_snapshot_count() const noexcept
+    {
         return observed_snapshot_count_;
     }
 
-private:
-    voris::mem::budget_node* budget_{};
+  private:
+    voris::mem::budget_node *budget_{};
     std::size_t calls_{};
     std::size_t observed_snapshot_count_{};
 };
 
-template <typename Recorder>
-[[nodiscard]] voris::mem::budget_event_sink sink_for(Recorder& recorder) noexcept {
+template <typename Recorder> [[nodiscard]] voris::mem::budget_event_sink sink_for(Recorder &recorder) noexcept
+{
     return voris::mem::budget_event_sink{recorder};
 }
 
-[[nodiscard]] voris::mem::budget_options
-options(std::string_view process,
-        std::string_view shard,
-        std::string_view subsystem,
-        voris::mem::budget_limits limits = {},
-        voris::mem::budget_event_sink sink = {}) {
+[[nodiscard]] voris::mem::budget_options options(std::string_view process, std::string_view shard,
+                                                 std::string_view subsystem, voris::mem::budget_limits limits = {},
+                                                 voris::mem::budget_event_sink sink = {})
+{
     return voris::mem::budget_options{
-        .dimensions = voris::mem::budget_dimensions{
-            .process = std::string{process},
-            .shard = std::string{shard},
-            .subsystem = std::string{subsystem},
-        },
+        .dimensions =
+            voris::mem::budget_dimensions{
+                .process = std::string{process},
+                .shard = std::string{shard},
+                .subsystem = std::string{subsystem},
+            },
         .limits = limits,
         .event_sink = sink,
     };
 }
 
-[[nodiscard]] std::size_t reserved_for(const std::vector<voris::mem::budget_snapshot>& snapshots,
-                                       std::string_view tag) noexcept {
-    for (const auto& snapshot : snapshots) {
-        if (snapshot.dimensions.tag == tag) {
+[[nodiscard]] std::size_t reserved_for(const std::vector<voris::mem::budget_snapshot> &snapshots,
+                                       std::string_view tag) noexcept
+{
+    for (const auto &snapshot : snapshots)
+    {
+        if (snapshot.dimensions.tag == tag)
+        {
             return snapshot.reserved_bytes;
         }
     }
     return 0U;
 }
 
-[[nodiscard]] std::size_t active_for(const std::vector<voris::mem::budget_snapshot>& snapshots,
-                                     std::string_view tag) noexcept {
-    for (const auto& snapshot : snapshots) {
-        if (snapshot.dimensions.tag == tag) {
+[[nodiscard]] std::size_t active_for(const std::vector<voris::mem::budget_snapshot> &snapshots,
+                                     std::string_view tag) noexcept
+{
+    for (const auto &snapshot : snapshots)
+    {
+        if (snapshot.dimensions.tag == tag)
+        {
             return snapshot.active_bytes;
         }
     }
     return 0U;
 }
 
-void test_child_reservation_exhausts_parent_hard_limit() {
-    voris::mem::memory_budget process{
-        options("process-a", "", "", voris::mem::budget_limits{.hard_limit = 100U})};
+void test_child_reservation_exhausts_parent_hard_limit()
+{
+    voris::mem::memory_budget process{options("process-a", "", "", voris::mem::budget_limits{.hard_limit = 100U})};
     voris::mem::budget_node shard{
-        process,
-        options("process-a", "shard-0", "cache", voris::mem::budget_limits{.hard_limit = 200U})};
+        process, options("process-a", "shard-0", "cache", voris::mem::budget_limits{.hard_limit = 200U})};
 
     auto first = shard.reserve(80U, voris::mem::memory_tag{"m4.parent"});
     assert(first);
@@ -139,16 +152,17 @@ void test_child_reservation_exhausts_parent_hard_limit() {
     assert(process.snapshots().empty());
 }
 
-void test_reservation_rejects_hierarchy_deeper_than_fallback_limit() {
+void test_reservation_rejects_hierarchy_deeper_than_fallback_limit()
+{
     voris::mem::memory_budget root{
         options("process-a", "root", "depth", voris::mem::budget_limits{.hard_limit = 1024U})};
     std::vector<std::unique_ptr<voris::mem::budget_node>> nodes;
     nodes.reserve(voris::mem::max_budget_hierarchy_depth);
-    voris::mem::budget_node* parent = &root;
-    for (std::size_t index = 0U; index < voris::mem::max_budget_hierarchy_depth; ++index) {
+    voris::mem::budget_node *parent = &root;
+    for (std::size_t index = 0U; index < voris::mem::max_budget_hierarchy_depth; ++index)
+    {
         nodes.push_back(std::make_unique<voris::mem::budget_node>(
-            *parent,
-            options("process-a", "deep", "depth", voris::mem::budget_limits{.hard_limit = 1024U})));
+            *parent, options("process-a", "deep", "depth", voris::mem::budget_limits{.hard_limit = 1024U})));
         parent = nodes.back().get();
     }
 
@@ -159,14 +173,11 @@ void test_reservation_rejects_hierarchy_deeper_than_fallback_limit() {
     assert(parent->snapshots().empty());
 }
 
-void test_soft_limit_event_does_not_reject_reservation() {
+void test_soft_limit_event_does_not_reject_reservation()
+{
     event_recorder recorder;
     voris::mem::memory_budget budget{options(
-        "process-a",
-        "",
-        "soft",
-        voris::mem::budget_limits{.soft_limit = 64U, .hard_limit = 256U},
-        sink_for(recorder))};
+        "process-a", "", "soft", voris::mem::budget_limits{.soft_limit = 64U, .hard_limit = 256U}, sink_for(recorder))};
 
     auto first = budget.reserve(32U, voris::mem::memory_tag{"m4.soft"});
     assert(first);
@@ -176,18 +187,16 @@ void test_soft_limit_event_does_not_reject_reservation() {
     assert(reserved_for(budget.snapshots(), "m4.soft") == 72U);
 }
 
-void test_high_and_low_watermark_crossing_events() {
+void test_high_and_low_watermark_crossing_events()
+{
     event_recorder recorder;
-    voris::mem::memory_budget budget{options(
-        "process-a",
-        "",
-        "watermarks",
-        voris::mem::budget_limits{
-            .hard_limit = 256U,
-            .high_watermark = 100U,
-            .low_watermark = 40U,
-        },
-        sink_for(recorder))};
+    voris::mem::memory_budget budget{options("process-a", "", "watermarks",
+                                             voris::mem::budget_limits{
+                                                 .hard_limit = 256U,
+                                                 .high_watermark = 100U,
+                                                 .low_watermark = 40U,
+                                             },
+                                             sink_for(recorder))};
 
     auto first = budget.reserve(80U, voris::mem::memory_tag{"m4.watermark"});
     assert(first);
@@ -200,14 +209,11 @@ void test_high_and_low_watermark_crossing_events() {
     assert(recorder.count(voris::mem::budget_event_kind::low_watermark_crossed) == 1U);
 }
 
-void test_low_watermark_default_is_disabled() {
+void test_low_watermark_default_is_disabled()
+{
     event_recorder recorder;
-    voris::mem::memory_budget budget{options(
-        "process-a",
-        "",
-        "default-low-watermark",
-        voris::mem::budget_limits{.hard_limit = 128U},
-        sink_for(recorder))};
+    voris::mem::memory_budget budget{options("process-a", "", "default-low-watermark",
+                                             voris::mem::budget_limits{.hard_limit = 128U}, sink_for(recorder))};
 
     auto token = budget.reserve(64U, voris::mem::memory_tag{"m4.low.default"});
     assert(token);
@@ -215,14 +221,12 @@ void test_low_watermark_default_is_disabled() {
     assert(recorder.count(voris::mem::budget_event_kind::low_watermark_crossed) == 0U);
 }
 
-void test_event_callback_runs_after_budget_lock_is_released() {
+void test_event_callback_runs_after_budget_lock_is_released()
+{
     reentrant_event_recorder recorder;
-    voris::mem::memory_budget budget{options(
-        "process-a",
-        "",
-        "reentrant",
-        voris::mem::budget_limits{.hard_limit = 128U, .high_watermark = 10U},
-        sink_for(recorder))};
+    voris::mem::memory_budget budget{options("process-a", "", "reentrant",
+                                             voris::mem::budget_limits{.hard_limit = 128U, .high_watermark = 10U},
+                                             sink_for(recorder))};
     recorder.set_budget(budget);
 
     auto token = budget.reserve(16U, voris::mem::memory_tag{"m4.reentrant.outer"});
@@ -233,9 +237,9 @@ void test_event_callback_runs_after_budget_lock_is_released() {
     assert(token->rollback());
 }
 
-void test_token_move_commit_and_rollback_do_not_double_account() {
-    voris::mem::memory_budget budget{
-        options("process-a", "", "moves", voris::mem::budget_limits{.hard_limit = 512U})};
+void test_token_move_commit_and_rollback_do_not_double_account()
+{
+    voris::mem::memory_budget budget{options("process-a", "", "moves", voris::mem::budget_limits{.hard_limit = 512U})};
 
     auto made = budget.reserve(64U, voris::mem::memory_tag{"m4.move"});
     assert(made);
@@ -259,7 +263,8 @@ void test_token_move_commit_and_rollback_do_not_double_account() {
     assert(budget.snapshots().empty());
 }
 
-void test_move_assignment_cleans_destination_reservation_before_transfer() {
+void test_move_assignment_cleans_destination_reservation_before_transfer()
+{
     voris::mem::memory_budget budget{
         options("process-a", "", "move-assign", voris::mem::budget_limits{.hard_limit = 512U})};
 
@@ -280,20 +285,21 @@ void test_move_assignment_cleans_destination_reservation_before_transfer() {
     assert(budget.snapshots().empty());
 }
 
-void test_committed_release_underflow_returns_error() {
+void test_committed_release_underflow_returns_error()
+{
     voris::mem::memory_budget budget{
         options("process-a", "", "release", voris::mem::budget_limits{.hard_limit = 512U})};
     auto token = budget.reserve(48U, voris::mem::memory_tag{"m4.release"});
     assert(token);
     assert(token->commit());
     assert(!budget.release(64U, voris::mem::memory_tag{"m4.release"}));
-    assert(budget.release(64U, voris::mem::memory_tag{"m4.release"}).error() ==
-           voris::mem::errc::wrong_owner);
+    assert(budget.release(64U, voris::mem::memory_tag{"m4.release"}).error() == voris::mem::errc::wrong_owner);
     assert(active_for(budget.snapshots(), "m4.release") == 48U);
     assert(budget.release(48U, voris::mem::memory_tag{"m4.release"}));
 }
 
-void test_concurrent_reservations() {
+void test_concurrent_reservations()
+{
     voris::mem::memory_budget budget{
         options("process-a", "", "concurrent", voris::mem::budget_limits{.hard_limit = 4096U})};
     constexpr std::size_t thread_count = 4U;
@@ -301,40 +307,44 @@ void test_concurrent_reservations() {
     std::vector<std::thread> threads;
     threads.reserve(thread_count);
 
-    for (std::size_t thread_index = 0U; thread_index < thread_count; ++thread_index) {
+    for (std::size_t thread_index = 0U; thread_index < thread_count; ++thread_index)
+    {
         threads.emplace_back([&budget] {
-            for (std::size_t index = 0U; index < iterations; ++index) {
+            for (std::size_t index = 0U; index < iterations; ++index)
+            {
                 auto token = budget.reserve(1U, voris::mem::memory_tag{"m4.concurrent"});
                 assert(token);
-                if ((index % 2U) == 0U) {
+                if ((index % 2U) == 0U)
+                {
                     assert(token->commit());
-                } else {
+                }
+                else
+                {
                     assert(token->rollback());
                 }
             }
         });
     }
-    for (auto& thread : threads) {
+    for (auto &thread : threads)
+    {
         thread.join();
     }
 
     assert(active_for(budget.snapshots(), "m4.concurrent") == (thread_count * iterations) / 2U);
     assert(reserved_for(budget.snapshots(), "m4.concurrent") == 0U);
-    assert(budget.release((thread_count * iterations) / 2U,
-                          voris::mem::memory_tag{"m4.concurrent"}));
+    assert(budget.release((thread_count * iterations) / 2U, voris::mem::memory_tag{"m4.concurrent"}));
     assert(budget.snapshots().empty());
 }
 
-void test_export_callback_receives_dimensions() {
+void test_export_callback_receives_dimensions()
+{
     voris::mem::memory_budget budget{
         options("process-a", "shard-2", "subsystem-x", voris::mem::budget_limits{.hard_limit = 128U})};
     auto token = budget.reserve(12U, voris::mem::memory_tag{"m4.export"});
     assert(token);
 
     std::vector<voris::mem::budget_snapshot> exported;
-    budget.export_snapshots([&exported](const voris::mem::budget_snapshot& snapshot) {
-        exported.push_back(snapshot);
-    });
+    budget.export_snapshots([&exported](const voris::mem::budget_snapshot &snapshot) { exported.push_back(snapshot); });
 
     assert(exported.size() == 1U);
     assert(exported[0].dimensions.process == "process-a");
@@ -352,7 +362,8 @@ static_assert(!std::is_copy_assignable_v<voris::mem::reservation_token>);
 static_assert(std::is_move_constructible_v<voris::mem::reservation_token>);
 static_assert(std::is_move_assignable_v<voris::mem::reservation_token>);
 
-int main() {
+int main()
+{
     test_child_reservation_exhausts_parent_hard_limit();
     test_reservation_rejects_hierarchy_deeper_than_fallback_limit();
     test_soft_limit_event_does_not_reject_reservation();
